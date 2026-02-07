@@ -96,16 +96,16 @@ function configurarSala(code){
   statusTxt.style.color="lime";
 }
 
-hostBtn.onclick=()=>{
-  isHost=true;
-  const r=Math.random().toString(36).substring(2,6).toUpperCase();
-  const k=Math.random().toString(36).substring(2,8).toUpperCase();
-  roomIdInput.value=`${r}-${k}`;
+hostBtn.onclick = () => {
+  isHost = true;
+  const r = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4 characters
+  const k = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4 characters
+  roomIdInput.value = `${r}-${k}`; // Format XXXX-XXXX
   configurarSala(roomIdInput.value);
-  messagesLocked=false;
-  input.disabled=false;
-  input.placeholder="Digite uma Mensagem ou Comando...";
-  logMsg("Sistema","Sala Criada.","var(--system-color)");
+  messagesLocked = false;
+  input.disabled = false;
+  input.placeholder = "Digite uma Mensagem ou Comando...";
+  logMsg("Sistema", "Sala Criada.", "var(--system-color)");
 };
 
 function isValidRoomCode(code) {
