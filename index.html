@@ -3,94 +3,330 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat Seguro e Privado com Criptografia de Ponta a Ponta :D</title>
-
+<title>SafeMsg - Chat Seguro e Privado</title>
 <style>
 :root {
-  --bg-color:#0a0a0a;
-  --text-color:#00ff41;
-  --accent-color:#008f11;
-  --system-color:#ffff00;
-  --user-color:#00ffff;
-  --other-color:#ff8c00;
-  --crypto-color:#ff00ff;
-  --lock-color:#ff4444;
-  --hybrid-color:#00bfff;
+  --bg-color: #0a0e27;
+  --text-color: #00ff41;
+  --accent-color: #00d4ff;
+  --system-color: #ffff00;
+  --user-color: #00ff88;
+  --other-color: #ff8c00;
+  --lock-color: #ff4444;
+  --hybrid-color: #00bfff;
+  --danger: #ff6b6b;
+  --success: #51cf66;
 }
-body{
-  background:var(--bg-color);
-  color:var(--text-color);
-  font-family:monospace;
-  margin:0;
-  display:flex;
-  flex-direction:column;
-  height:100vh;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
-#topbar,#controls,.input-area{padding:10px;border-bottom:1px solid #333;background:#111;}
-#log{flex:1;overflow-y:auto;padding:15px;}
-.msg-line{margin-bottom:6px}
-.timestamp{color:#666;font-size:10px}
-.lock-notice{color:var(--lock-color);text-align:center;border:1px dashed var(--lock-color);padding:10px;}
-input{flex:1;background:transparent;border:none;color:var(--text-color);outline:none;}
-button{background:transparent;border:1px solid var(--text-color);color:var(--text-color);cursor:pointer;}
-button:hover{background:var(--text-color);color:#000}
-.error-msg {
-    color: red;
-    font-weight: bold;
-    text-align: center;
-    margin: 10px 0;
+
+body {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+  color: var(--text-color);
+  font-family: 'Courier New', monospace;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#topbar {
+  background: rgba(0, 0, 0, 0.6);
+  border-bottom: 2px solid var(--accent-color);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  box-shadow: 0 4px 6px rgba(0, 255, 65, 0.1);
+}
+
+#statusTxt {
+  color: var(--lock-color);
+  font-weight: bold;
+  padding: 5px 10px;
+  background: rgba(255, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+#userTxt {
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+#controls {
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+  padding: 15px 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#roomId {
+  flex: 1;
+  min-width: 150px;
+  background: rgba(0, 255, 65, 0.05);
+  border: 2px solid var(--accent-color);
+  color: var(--text-color);
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+#roomId:focus {
+  outline: none;
+  background: rgba(0, 212, 255, 0.1);
+  border-color: var(--text-color);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+#roomId::placeholder {
+  color: rgba(0, 255, 65, 0.5);
+}
+
+button {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 255, 65, 0.1));
+  border: 2px solid var(--accent-color);
+  color: var(--text-color);
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+button:hover {
+  background: linear-gradient(135deg, var(--accent-color), var(--text-color));
+  color: var(--bg-color);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 255, 65, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-right: 1px solid rgba(0, 255, 65, 0.1);
+}
+
+#log::-webkit-scrollbar {
+  width: 8px;
+}
+
+#log::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+#log::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 4px;
+}
+
+#log::-webkit-scrollbar-thumb:hover {
+  background: var(--text-color);
+}
+
+.msg-line {
+  margin-bottom: 8px;
+  line-height: 1.5;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.timestamp {
+  color: rgba(0, 255, 65, 0.6);
+  font-size: 11px;
+  margin-right: 8px;
+}
+
+.msg-line b {
+  color: var(--accent-color);
+  margin-right: 8px;
+}
+
+.lock-notice {
+  color: var(--lock-color);
+  text-align: center;
+  border: 2px dashed var(--lock-color);
+  padding: 20px;
+  margin: 40px 0;
+  border-radius: 6px;
+  background: rgba(255, 68, 68, 0.05);
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.input-area {
+  background: rgba(0, 0, 0, 0.6);
+  border-top: 2px solid var(--accent-color);
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.input-area span {
+  color: var(--text-color);
+  font-weight: bold;
+  font-size: 16px;
+}
+
+#input {
+  flex: 1;
+  background: rgba(0, 255, 65, 0.05);
+  border: 2px solid var(--accent-color);
+  color: var(--text-color);
+  padding: 10px 15px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+#input:focus {
+  outline: none;
+  background: rgba(0, 212, 255, 0.1);
+  border-color: var(--text-color);
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+}
+
+#input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#input::placeholder {
+  color: rgba(0, 255, 65, 0.5);
+}
+
+/* Cores para diferentes tipos de mensagem */
+.msg-user {
+  color: var(--user-color);
+}
+
+.msg-system {
+  color: var(--system-color);
+  font-weight: bold;
+}
+
+.msg-other {
+  color: var(--other-color);
+}
+
+.msg-error {
+  color: var(--danger);
+  font-weight: bold;
+}
+
+.msg-success {
+  color: var(--success);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  #controls {
+    flex-direction: column;
+  }
+
+  #roomId {
+    order: 2;
+  }
+
+  button {
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+
+  .input-area {
+    padding: 12px 15px;
+  }
+
+  #log {
+    padding: 15px;
+  }
+}
 </style>
 <script src="https://js.pusher.com/beams/2.1.0/push-notifications-cdn.js"></script>
 </head>
 <body>
 
-<div id="topbar">STATUS: <span id="statusTxt">OFFLINE</span> | Usuário: <span id="userTxt"></span></div>
+<div id="topbar">
+  <div>STATUS: <span id="statusTxt">OFFLINE</span></div>
+  <div>Usuário: <span id="userTxt"></span></div>
+</div>
 
 <div id="controls">
-<button id="hostBtn">Criar Sala</button>
-<input id="roomId" placeholder="Código da Sala">
-<button id="joinBtn">Entrar</button>
+  <button id="hostBtn">➕ Criar Sala</button>
+  <input id="roomId" placeholder="Cole o código da sala...">
+  <button id="joinBtn">🚀 Entrar</button>
 </div>
 
 <div id="log"></div>
 
 <div class="input-area">
-<span>&gt;</span>
-<input id="input" disabled placeholder="Aguardando conexão...">
+  <span>➤</span>
+  <input id="input" disabled placeholder="Aguardando conexão...">
 </div>
 
 <script>
-const log=document.getElementById("log");
-const input=document.getElementById("input");
-const hostBtn=document.getElementById("hostBtn");
-const joinBtn=document.getElementById("joinBtn");
-const roomIdInput=document.getElementById("roomId");
-const statusTxt=document.getElementById("statusTxt");
-const userTxt=document.getElementById("userTxt");
+const log = document.getElementById("log");
+const input = document.getElementById("input");
+const hostBtn = document.getElementById("hostBtn");
+const joinBtn = document.getElementById("joinBtn");
+const roomIdInput = document.getElementById("roomId");
+const statusTxt = document.getElementById("statusTxt");
+const userTxt = document.getElementById("userTxt");
 
-let roomId=null,isHost=false,pendingJoin=false,messagesLocked=true;
-const username="User_"+Math.floor(Math.random()*999);
-userTxt.textContent=username;
+let roomId = null, isHost = false, pendingJoin = false;
+const username = "User_" + Math.floor(Math.random() * 999);
+userTxt.textContent = username;
 
-// BroadcastChannel
 const channel = new BroadcastChannel("TERMINAL_CHAT_V3");
 
-function logMsg(user,text,color){
-  const t=new Date().toLocaleTimeString();
-  const d=document.createElement("div");
-  d.className="msg-line";
-  d.style.color=color;
-  d.innerHTML=`<span class="timestamp">[${t}]</span> <b>[${user}]</b> ${text}`;
+function logMsg(user, text, msgClass = "msg-system") {
+  const t = new Date().toLocaleTimeString();
+  const d = document.createElement("div");
+  d.className = "msg-line " + msgClass;
+  d.innerHTML = `<span class="timestamp">[${t}]</span> <b>[${user}]</b> ${text}`;
   log.appendChild(d);
-  log.scrollTop=log.scrollHeight;
+  log.scrollTop = log.scrollHeight;
 }
 
-function emit(data){
-  channel.postMessage({...data,_ts:Date.now()+Math.random()});
+function emit(data) {
+  channel.postMessage({...data, _ts: Date.now() + Math.random()});
 }
 
-// Enviar via Pusher Beams
 async function sendViaBeams(type, data) {
   try {
     await fetch('https://25c53a34-9520-4359-b3a4-06872d75b7a6.pushnotifications.pusher.com/publish_api/v1/instances/25c53a34-9520-4359-b3a4-06872d75b7a6/publishes', {
@@ -114,124 +350,15 @@ async function sendViaBeams(type, data) {
   }
 }
 
-function configurarSala(code){
-  const p=code.split("-");
-  roomId=p[0];
-  statusTxt.textContent="SALA "+roomId;
-  statusTxt.style.color="lime";
+function configurarSala(code) {
+  const p = code.split("-");
+  roomId = p[0];
+  statusTxt.textContent = "SALA " + roomId;
+  statusTxt.style.color = "var(--success)";
 }
 
-hostBtn.onclick = () => {
-  isHost = true;
-  const r = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4 characters
-  const k = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4 characters
-  roomIdInput.value = `${r}-${k}`; // Format XXXX-XXXX
-  configurarSala(roomIdInput.value);
-  messagesLocked = false;
-  input.disabled = false;
-  input.placeholder = "Digite uma Mensagem ou Comando...";
-  logMsg("Sistema", "Sala Criada.", "var(--system-color)");
-};
-
 function isValidRoomCode(code) {
-    return /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code);
-  }
-
-joinBtn.onclick = () => {
-    const roomCode = roomIdInput.value.trim();
-    if (!roomCode) {
-      logMsg("Erro", "Por favor, insira um código de sala.", "red");
-      return;
-    }
-
-    if (!isValidRoomCode(roomCode)) {
-      logMsg("Erro", "Código de sala inválido. Use o formato XXXX-XXXX.", "red");
-      return;
-    }
-
-    configurarSala(roomCode);
-    pendingJoin = true;
-    input.disabled = true;
-    log.innerHTML = '<div class="lock-notice">Aguardando aprovação do criador da sala</div>';
-
-    // Inscrever-se na sala para receber notificações
-    beamsClient.addDeviceInterest(roomId).catch(err => console.log(err));
-    
-    // Enviar solicitação via BroadcastChannel e Pusher Beams
-    emit({ room: roomId, type: "JOIN_REQUEST", user: username });
-    sendViaBeams('JOIN_REQUEST', { room: roomId, user: username });
-  };
-
-input.onkeydown=e=>{
-  if(e.key!=="Enter"||!input.value.trim())return;
-  const v=input.value.trim();
-
-  if(isHost && v.startsWith("/ACCEPT ")){
-    const u=v.split(" ")[1];
-    emit({room:roomId,action:"ACCEPT_"+u});
-    logMsg("Sistema",`Usuário ${u} aprovado.`,"var(--hybrid-color)");
-    input.value=""; return;
-  }
-
-  if(isHost && v.startsWith("/REJECT ")){
-    const u=v.split(" ")[1];
-    emit({room:roomId,action:"REJECT_"+u});
-    logMsg("Sistema",`Usuário ${u} recusado.`,"var(--lock-color)");
-    input.value=""; return;
-  }
-
-  logMsg(username,v,"var(--user-color)");
-  input.value="";
-};
-
-channel.onmessage = (e) => {
-  const data = e.data;
-
-  // Verifica se a mensagem é para a sala correta
-  if (!data.room || data.room !== roomId) return;
-
-  // pedido join
-  if (data.type === "JOIN_REQUEST" && isHost) {
-    logMsg("Sistema", `${data.user} quer entrar na sala.`, "var(--system-color)");
-    logMsg("Sistema", `/accept ${data.user} para aceitar | /cancel ${data.user} para cancelar`, "var(--system-color)");
-  }
-
-  // aceito
-  if (data.action === "ACCEPT_" + username) {
-    pendingJoin = false;
-    messagesLocked = false;
-    input.disabled = false;
-    log.innerHTML = "";
-    logMsg("Sistema", "Entrada autorizada por um Admin", "var(--hybrid-color)");
-  }
-
-  // recusado
-  if (data.action === "REJECT_" + username) {
-    pendingJoin = false;
-    input.disabled = true;
-    log.innerHTML = ""; // Limpa o log ao ser rejeitado
-    logMsg("Sistema", "Entrada recusada por um Admin.", "var(--lock-color)");
-  }
-};
-
-// Enviar mensagens para o Pusher Beams
-async function sendNotificationToRoom(title, body) {
-  const response = await fetch('https://25c53a34-9520-4359-b3a4-06872d75b7a6.pushnotifications.pusher.com/publish_api/v1/instances/25c53a34-9520-4359-b3a4-06872d75b7a6/publishes', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer 493349CE7C1A991DE604F74FCE3A1130A3FC3BDF4FA3D67DC270CE60FE8BFC0D'
-    },
-    body: JSON.stringify({
-      interests: [roomId],
-      web: {
-        notification: {
-          title: title,
-          body: body
-        }
-      }
-    })
-  }).catch(err => console.log('Notificação sem servidor', err));
+  return /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code);
 }
 
 hostBtn.onclick = () => {
@@ -240,47 +367,112 @@ hostBtn.onclick = () => {
   const k = Math.random().toString(36).substring(2, 6).toUpperCase();
   roomIdInput.value = `${r}-${k}`;
   configurarSala(roomIdInput.value);
-  messagesLocked = false;
   input.disabled = false;
-  input.placeholder = "Digite uma Mensagem ou Comando...";
-  logMsg("Sistema", "Sala Criada.", "var(--system-color)");
+  input.placeholder = "Digite uma mensagem...";
+  logMsg("Sistema", "Sala Criada com sucesso! Aguardando outros usuários...", "msg-success");
   
-  // Se estiver usando Pusher Beams, adicione interesse para esta sala
   beamsClient.addDeviceInterest(roomId).catch(err => console.log(err));
 };
 
 joinBtn.onclick = () => {
   const roomCode = roomIdInput.value.trim();
   if (!roomCode) {
-    logMsg("Erro", "Por favor, insira um código de sala.", "red");
+    logMsg("Erro", "Por favor, insira um código de sala.", "msg-error");
     return;
   }
 
   if (!isValidRoomCode(roomCode)) {
-    logMsg("Erro", "Código de sala inválido. Use o formato XXXX-XXXX.", "red");
+    logMsg("Erro", "Código inválido! Use o formato XXXX-XXXX", "msg-error");
     return;
   }
 
   configurarSala(roomCode);
   pendingJoin = true;
   input.disabled = true;
-  log.innerHTML = '<div class="lock-notice">Aguardando aprovação do criador da sala</div>';
+  log.innerHTML = '<div class="lock-notice">🔒 Aguardando aprovação do administrador...</div>';
 
-  // Se estiver usando Pusher Beams, adicione interesse para esta sala
   beamsClient.addDeviceInterest(roomId).catch(err => console.log(err));
+  
+  emit({ room: roomId, type: "JOIN_REQUEST", user: username });
+  sendViaBeams('JOIN_REQUEST', { room: roomId, user: username });
 };
 
-// Listener para notificações do Pusher Beams
-  //Presta ._.
-  //se souber programar ele BEM, presta akakkakakakkaka
+input.onkeydown = (e) => {
+  if (e.key !== "Enter" || !input.value.trim()) return;
+  const v = input.value.trim();
+
+  if (isHost && v.startsWith("/accept ")) {
+    const u = v.split(" ")[1];
+    emit({room: roomId, action: "ACCEPT_" + u});
+    sendViaBeams('ACCEPT', { room: roomId, user: u });
+    logMsg("Sistema", `✓ Usuário ${u} foi aprovado!`, "msg-success");
+    input.value = "";
+    return;
+  }
+
+  if (isHost && v.startsWith("/reject ")) {
+    const u = v.split(" ")[1];
+    emit({room: roomId, action: "REJECT_" + u});
+    sendViaBeams('REJECT', { room: roomId, user: u });
+    logMsg("Sistema", `✗ Usuário ${u} foi rejeitado.`, "msg-error");
+    input.value = "";
+    return;
+  }
+
+  logMsg(username, v, "msg-user");
+  emit({ room: roomId, type: "MESSAGE", user: username, text: v });
+  sendViaBeams('MESSAGE', { room: roomId, user: username, text: v });
+  input.value = "";
+};
+
+channel.onmessage = (e) => {
+  const data = e.data;
+
+  if (!data.room || data.room !== roomId) return;
+
+  if (data.type === "JOIN_REQUEST" && isHost) {
+    logMsg("Sistema", `${data.user} quer entrar na sala!`, "msg-system");
+    logMsg("Sistema", `Digite: /accept ${data.user} ou /reject ${data.user}`, "msg-system");
+  }
+
+  if (data.action === "ACCEPT_" + username) {
+    pendingJoin = false;
+    input.disabled = false;
+    log.innerHTML = "";
+    logMsg("Sistema", "✓ Você foi aprovado! Bem-vindo à sala.", "msg-success");
+  }
+
+  if (data.action === "REJECT_" + username) {
+    pendingJoin = false;
+    input.disabled = true;
+    log.innerHTML = "";
+    logMsg("Sistema", "✗ Sua solicitação foi rejeitada.", "msg-error");
+  }
+
+  if (data.type === "MESSAGE" && data.user !== username) {
+    logMsg(data.user, data.text, "msg-other");
+  }
+};
+
+// Inicializar Pusher Beams
+const beamsClient = new PusherPushNotifications.Client({
+  instanceId: '25c53a34-9520-4359-b3a4-06872d75b7a6',
+});
+
+beamsClient.start()
+  .then(() => console.log('Push Notifications iniciado'))
+  .catch(console.error);
+
+// Listener para notificações
+  //Fino senhores 🍷🗿
 beamsClient.on('notification_received', (notification) => {
   const notifData = notification.data;
   if (notifData && notifData.title === 'JOIN_REQUEST') {
     try {
       const data = JSON.parse(notifData.body);
       if (data.room === roomId && isHost) {
-        logMsg("Sistema", `${data.user} quer entrar na sala.`, "var(--system-color)");
-        logMsg("Sistema", `/accept ${data.user} para aceitar | /cancel ${data.user} para cancelar`, "var(--system-color)");
+        logMsg("Sistema", `${data.user} quer entrar na sala!`, "msg-system");
+        logMsg("Sistema", `Digite: /accept ${data.user} ou /reject ${data.user}`, "msg-system");
       }
     } catch (e) {
       console.log('Erro ao processar notificação', e);
