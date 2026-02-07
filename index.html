@@ -41,6 +41,7 @@ button:hover{background:var(--text-color);color:#000}
     margin: 10px 0;
   }
 </style>
+<script src="https://js.pusher.com/beams/2.1.0/push-notifications-cdn.js"></script>
 </head>
 <body>
 
@@ -183,7 +184,149 @@ channel.onmessage = (e) => {
     logMsg("Sistema", "Entrada recusada por um Admin.", "var(--lock-color)");
   }
 };
+
+const signalingServer = new WebSocket('wss://your-signaling-server-url'); // Substitua pela URL do servidor de sinalização
+let peerConnection;
+const config = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+  ],
+};
+
+signalingServer.onmessage = (message) => {
+  const data = JSON.parse(message.data);
+
+  switch (data.type) {
+    case 'JOIN_REQUEST':
+      if (isHost) {
+        logMsg("Sistema", `${data.user} quer entrar na sala.`, "var(--system-color)");
+        logMsg("Sistema", `/accept ${data.user} para aceitar | /cancel ${data.user} para cancelar`, "var(--system-color)");
+      }
+      break;
+
+    case 'SIGNAL':
+      if (peerConnection) {
+        peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+        if (data.signal.type === 'offer') {
+          peerConnection
+            .createAnswer()
+            .then((answer) => peerConnection.setLocalDescription(answer))
+            .then(() => {
+              signalingServer.send(
+                JSON.stringify({
+                  type: 'SIGNAL',
+                  signal: peerConnection.localDescription,
+                  roomId: roomId,
+                  user: username,
+                })
+              );
+            });
+        }
+      }
+      break;
+  }
+};
+
+function createPeerConnection() {
+  peerConnection = new RTCPeerConnection(config);
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      signalingServer.send(
+        JSON.stringify({
+          type: 'SIGNAL',
+          signal: event.candidate,
+          roomId: roomId,
+          user: username,
+        })
+      );
+    }
+  };
+
+  peerConnection.ondatachannel = (event) => {
+    const channel = event.channel;
+    channel.onmessage = (e) => {
+      const { user, text } = JSON.parse(e.data);
+      logMsg(user, text, "var(--other-color)");
+    };
+  };
+}
+
+hostBtn.onclick = () => {
+  isHost = true;
+  const r = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const k = Math.random().toString(36).substring(2, 6).toUpperCase();
+  roomIdInput.value = `${r}-${k}`;
+  configurarSala(roomIdInput.value);
+  messagesLocked = false;
+  input.disabled = false;
+  input.placeholder = "Digite uma Mensagem ou Comando...";
+  logMsg("Sistema", "Sala Criada.", "var(--system-color)");
+
+  signalingServer.send(
+    JSON.stringify({
+      type: 'CREATE_ROOM',
+      roomId: roomId,
+    })
+  );
+
+  const dataChannel = peerConnection.createDataChannel('chat');
+  dataChannel.onmessage = (e) => {
+    const { user, text } = JSON.parse(e.data);
+    logMsg(user, text, "var(--other-color)");
+  };
+};
+
+joinBtn.onclick = () => {
+  const roomCode = roomIdInput.value.trim();
+  if (!roomCode) {
+    logMsg("Erro", "Por favor, insira um código de sala.", "red");
+    return;
+  }
+
+  if (!isValidRoomCode(roomCode)) {
+    logMsg("Erro", "Código de sala inválido. Use o formato XXXX-XXXX.", "red");
+    return;
+  }
+
+  configurarSala(roomCode);
+  pendingJoin = true;
+  input.disabled = true;
+  log.innerHTML = '<div class="lock-notice">Aguardando aprovação do criador da sala</div>';
+
+  signalingServer.send(
+    JSON.stringify({
+      type: 'JOIN_ROOM',
+      roomId: roomId,
+      user: username,
+    })
+  );
+
+  createPeerConnection();
+
+  peerConnection
+    .createOffer()
+    .then((offer) => peerConnection.setLocalDescription(offer))
+    .then(() => {
+      signalingServer.send(
+        JSON.stringify({
+          type: 'SIGNAL',
+          signal: peerConnection.localDescription,
+          roomId: roomId,
+          user: username,
+        })
+      );
+    });
+};
+
+const beamsClient = new PusherPushNotifications.Client({
+    instanceId: '25c53a34-9520-4359-b3a4-06872d75b7a6',
+  });
+
+  beamsClient.start()
+    .then(() => beamsClient.addDeviceInterest('hello'))
+    .then(() => console.log('Successfully registered and subscribed!'))
+    .catch(console.error);
 </script>
 </body>
 </html>
-._.
