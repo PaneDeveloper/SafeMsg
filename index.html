@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TERMINAL CHAT v3.3.5 (Join Approval)</title>
+<title>Chat Seguro e Privado com Criptografia de Ponta a Ponta :D</title>
 
 <style>
 :root {
@@ -17,7 +17,6 @@
   --lock-color:#ff4444;
   --hybrid-color:#00bfff;
 }
-
 body{
   background:var(--bg-color);
   color:var(--text-color);
@@ -27,58 +26,24 @@ body{
   flex-direction:column;
   height:100vh;
 }
-
-#topbar,#controls,.input-area{
-  padding:10px;
-  border-bottom:1px solid #333;
-  background:#111;
-}
-
-#log{
-  flex:1;
-  overflow-y:auto;
-  padding:15px;
-}
-
+#topbar,#controls,.input-area{padding:10px;border-bottom:1px solid #333;background:#111;}
+#log{flex:1;overflow-y:auto;padding:15px;}
 .msg-line{margin-bottom:6px}
 .timestamp{color:#666;font-size:10px}
-
-.lock-notice{
-  color:var(--lock-color);
-  text-align:center;
-  border:1px dashed var(--lock-color);
-  padding:10px;
-}
-
-input{
-  flex:1;
-  background:transparent;
-  border:none;
-  color:var(--text-color);
-  outline:none;
-}
-
-button{
-  background:transparent;
-  border:1px solid var(--text-color);
-  color:var(--text-color);
-  cursor:pointer;
-}
+.lock-notice{color:var(--lock-color);text-align:center;border:1px dashed var(--lock-color);padding:10px;}
+input{flex:1;background:transparent;border:none;color:var(--text-color);outline:none;}
+button{background:transparent;border:1px solid var(--text-color);color:var(--text-color);cursor:pointer;}
 button:hover{background:var(--text-color);color:#000}
 </style>
 </head>
-
 <body>
 
-<div id="topbar">
-STATUS: <span id="statusTxt">OFFLINE</span> |
-USER: <span id="userTxt"></span>
-</div>
+<div id="topbar">STATUS: <span id="statusTxt">OFFLINE</span> | Usuário: <span id="userTxt"></span></div>
 
 <div id="controls">
-<button id="hostBtn">CRIAR HOST</button>
-<input id="roomId" placeholder="SALA-CHAVE">
-<button id="joinBtn">CONECTAR</button>
+<button id="hostBtn">Criar Sala</button>
+<input id="roomId" placeholder="Código da Sala">
+<button id="joinBtn">Entrar</button>
 </div>
 
 <div id="log"></div>
@@ -89,22 +54,20 @@ USER: <span id="userTxt"></span>
 </div>
 
 <script>
-const log = document.getElementById("log");
-const input = document.getElementById("input");
-const hostBtn = document.getElementById("hostBtn");
-const joinBtn = document.getElementById("joinBtn");
-const roomIdInput = document.getElementById("roomId");
-const statusTxt = document.getElementById("statusTxt");
-const userTxt = document.getElementById("userTxt");
+const log=document.getElementById("log");
+const input=document.getElementById("input");
+const hostBtn=document.getElementById("hostBtn");
+const joinBtn=document.getElementById("joinBtn");
+const roomIdInput=document.getElementById("roomId");
+const statusTxt=document.getElementById("statusTxt");
+const userTxt=document.getElementById("userTxt");
 
-let roomId=null;
-let cryptoKey="";
-let isHost=false;
-let pendingJoin=false;
-let messagesLocked=true;
-
+let roomId=null,isHost=false,pendingJoin=false,messagesLocked=true;
 const username="User_"+Math.floor(Math.random()*999);
 userTxt.textContent=username;
+
+// BroadcastChannel
+const channel = new BroadcastChannel("TERMINAL_CHAT_V3");
 
 function logMsg(user,text,color){
   const t=new Date().toLocaleTimeString();
@@ -116,15 +79,13 @@ function logMsg(user,text,color){
   log.scrollTop=log.scrollHeight;
 }
 
-function enviarAdmin(data){
-  localStorage.setItem("cli_chat_admin",JSON.stringify(data));
-  localStorage.removeItem("cli_chat_admin");
+function emit(data){
+  channel.postMessage({...data,_ts:Date.now()+Math.random()});
 }
 
 function configurarSala(code){
   const p=code.split("-");
   roomId=p[0];
-  cryptoKey=p[1]||p[0];
   statusTxt.textContent="SALA "+roomId;
   statusTxt.style.color="lime";
 }
@@ -137,22 +98,18 @@ hostBtn.onclick=()=>{
   configurarSala(roomIdInput.value);
   messagesLocked=false;
   input.disabled=false;
-  input.placeholder="Comando ou mensagem...";
-  logMsg("Sistema","Host criado.","var(--system-color)");
+  input.placeholder="Digite uma Mensagem ou Comando...";
+  logMsg("Sistema","Sala Criada.","var(--system-color)");
 };
 
 joinBtn.onclick=()=>{
-  if(!roomIdInput.value.trim())return;
+  if(!roomIdInput.value.trim()) return;
   configurarSala(roomIdInput.value.trim());
   pendingJoin=true;
   input.disabled=true;
-  log.innerHTML='<div class="lock-notice">Aguardando aprovação do admin...</div>';
+  log.innerHTML='<div class="lock-notice">Aguardando aprovação do criador da sala</div>';
 
-  enviarAdmin({
-    room:roomId,
-    type:"JOIN_REQUEST",
-    user:username
-  });
+  emit({room:roomId,type:"JOIN_REQUEST",user:username});
 };
 
 input.onkeydown=e=>{
@@ -161,48 +118,48 @@ input.onkeydown=e=>{
 
   if(isHost && v.startsWith("/ACCEPT ")){
     const u=v.split(" ")[1];
-    enviarAdmin({room:roomId,action:"ACCEPT_"+u});
+    emit({room:roomId,action:"ACCEPT_"+u});
     logMsg("Sistema",`Usuário ${u} aprovado.`,"var(--hybrid-color)");
-    input.value="";
-    return;
+    input.value=""; return;
   }
 
   if(isHost && v.startsWith("/REJECT ")){
     const u=v.split(" ")[1];
-    enviarAdmin({room:roomId,action:"REJECT_"+u});
+    emit({room:roomId,action:"REJECT_"+u});
     logMsg("Sistema",`Usuário ${u} recusado.`,"var(--lock-color)");
-    input.value="";
-    return;
+    input.value=""; return;
   }
 
   logMsg(username,v,"var(--user-color)");
   input.value="";
 };
 
-window.addEventListener("storage",e=>{
-  if(!roomId||!e.newValue)return;
-  const s=JSON.parse(e.newValue);
-  if(!s.room||!s.room.includes(roomId))return;
+channel.onmessage=(e)=>{
+  const data=e.data;
+  if(!data.room||!data.room.includes(roomId)) return;
 
-  if(s.type==="JOIN_REQUEST" && isHost){
-    logMsg("Sistema",`${s.user} pediu para entrar.`,"var(--system-color)");
-    logMsg("Sistema",`/ACCEPT ${s.user}  |  /REJECT ${s.user}`,"var(--system-color)");
+  // pedido join
+  if(data.type==="JOIN_REQUEST" && isHost){
+    logMsg("Sistema",`${data.user} pediu para entrar.`,"var(--system-color)");
+    logMsg("Sistema",`/ACCEPT ${data.user} | /REJECT ${data.user}`,"var(--system-color)");
   }
 
-  if(s.action==="ACCEPT_"+username){
+  // aceito
+  if(data.action==="ACCEPT_"+username){
     pendingJoin=false;
     messagesLocked=false;
     input.disabled=false;
     log.innerHTML="";
-    logMsg("Sistema","Entrada autorizada.","var(--hybrid-color)");
+    logMsg("Sistema","Entrada autorizada por um Admin","var(--hybrid-color)");
   }
 
-  if(s.action==="REJECT_"+username){
+  // recusado
+  if(data.action==="REJECT_"+username){
     pendingJoin=false;
     input.disabled=true;
-    logMsg("Sistema","Entrada recusada.","var(--lock-color)");
+    logMsg("Sistema","Entrada recusada por um Admin.","var(--lock-color)");
   }
-});
+};
 </script>
 </body>
 </html>
