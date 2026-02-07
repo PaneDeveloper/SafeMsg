@@ -3,292 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SafeMsg - Chat Seguro e Privado</title>
+<title>SafeMsg WebRTC Chat</title>
 <style>
 :root {
-  --bg-color: #0a0e27;
-  --text-color: #00ff41;
-  --accent-color: #00d4ff;
-  --system-color: #ffff00;
-  --user-color: #00ff88;
-  --other-color: #ff8c00;
-  --lock-color: #ff4444;
-  --hybrid-color: #00bfff;
-  --danger: #ff6b6b;
-  --success: #51cf66;
+  --bg:#0a0e27; --text:#00ff41; --accent:#00bfff; --system:#ffff00; --user:#00ff88;
+  --other:#ff8c00; --lock:#ff4444; --success:#51cf66; --danger:#ff6b6b;
 }
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-  color: var(--text-color);
-  font-family: 'Courier New', monospace;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-#topbar {
-  background: rgba(0, 0, 0, 0.6);
-  border-bottom: 2px solid var(--accent-color);
-  padding: 15px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-  box-shadow: 0 4px 6px rgba(0, 255, 65, 0.1);
-}
-
-#statusTxt {
-  color: var(--lock-color);
-  font-weight: bold;
-  padding: 5px 10px;
-  background: rgba(255, 0, 0, 0.1);
-  border-radius: 4px;
-}
-
-#userTxt {
-  color: var(--accent-color);
-  font-weight: bold;
-}
-
-#controls {
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
-  padding: 15px 20px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-#roomId {
-  flex: 1;
-  min-width: 150px;
-  background: rgba(0, 255, 65, 0.05);
-  border: 2px solid var(--accent-color);
-  color: var(--text-color);
-  padding: 10px 15px;
-  border-radius: 6px;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-#roomId:focus {
-  outline: none;
-  background: rgba(0, 212, 255, 0.1);
-  border-color: var(--text-color);
-  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
-}
-
-#roomId::placeholder {
-  color: rgba(0, 255, 65, 0.5);
-}
-
-button {
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 255, 65, 0.1));
-  border: 2px solid var(--accent-color);
-  color: var(--text-color);
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 6px;
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-button:hover {
-  background: linear-gradient(135deg, var(--accent-color), var(--text-color));
-  color: var(--bg-color);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 255, 65, 0.3);
-}
-
-button:active {
-  transform: translateY(0);
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-#log {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.3);
-  border-right: 1px solid rgba(0, 255, 65, 0.1);
-}
-
-#log::-webkit-scrollbar {
-  width: 8px;
-}
-
-#log::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-#log::-webkit-scrollbar-thumb {
-  background: var(--accent-color);
-  border-radius: 4px;
-}
-
-#log::-webkit-scrollbar-thumb:hover {
-  background: var(--text-color);
-}
-
-.msg-line {
-  margin-bottom: 8px;
-  line-height: 1.5;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.timestamp {
-  color: rgba(0, 255, 65, 0.6);
-  font-size: 11px;
-  margin-right: 8px;
-}
-
-.msg-line b {
-  color: var(--accent-color);
-  margin-right: 8px;
-}
-
-.lock-notice {
-  color: var(--lock-color);
-  text-align: center;
-  border: 2px dashed var(--lock-color);
-  padding: 20px;
-  margin: 40px 0;
-  border-radius: 6px;
-  background: rgba(255, 68, 68, 0.05);
-  font-weight: bold;
-  letter-spacing: 1px;
-}
-
-.input-area {
-  background: rgba(0, 0, 0, 0.6);
-  border-top: 2px solid var(--accent-color);
-  padding: 15px 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.input-area span {
-  color: var(--text-color);
-  font-weight: bold;
-  font-size: 16px;
-}
-
-#input {
-  flex: 1;
-  background: rgba(0, 255, 65, 0.05);
-  border: 2px solid var(--accent-color);
-  color: var(--text-color);
-  padding: 10px 15px;
-  border-radius: 6px;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-#input:focus {
-  outline: none;
-  background: rgba(0, 212, 255, 0.1);
-  border-color: var(--text-color);
-  box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
-}
-
-#input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-#input::placeholder {
-  color: rgba(0, 255, 65, 0.5);
-}
-
-/* Cores para diferentes tipos de mensagem */
-.msg-user {
-  color: var(--user-color);
-}
-
-.msg-system {
-  color: var(--system-color);
-  font-weight: bold;
-}
-
-.msg-other {
-  color: var(--other-color);
-}
-
-.msg-error {
-  color: var(--danger);
-  font-weight: bold;
-}
-
-.msg-success {
-  color: var(--success);
-}
-
-/* Responsivo */
-@media (max-width: 768px) {
-  #controls {
-    flex-direction: column;
-  }
-
-  #roomId {
-    order: 2;
-  }
-
-  button {
-    padding: 12px 16px;
-    font-size: 13px;
-  }
-
-  .input-area {
-    padding: 12px 15px;
-  }
-
-  #log {
-    padding: 15px;
-  }
-}
+body{background:#0a0e27;color:var(--text);font-family:monospace;margin:0;display:flex;flex-direction:column;height:100vh;}
+#topbar{padding:10px 20px;background:rgba(0,0,0,0.5);display:flex;justify-content:space-between;border-bottom:2px solid var(--accent);}
+#controls{padding:10px 20px;display:flex;gap:10px;border-bottom:1px solid rgba(0,255,65,0.2);}
+#log{flex:1;overflow-y:auto;padding:15px;background:rgba(0,0,0,0.3);}
+.input-area{display:flex;padding:10px 20px;gap:10px;border-top:2px solid var(--accent);}
+input,button{font-family:monospace;font-size:14px;border-radius:4px;}
+input{flex:1;padding:8px;border:2px solid var(--accent);background:rgba(0,255,65,0.05);color:var(--text);}
+button{padding:8px 12px;border:2px solid var(--accent);background:transparent;color:var(--text);cursor:pointer;}
+.msg-line{margin-bottom:6px}
+.timestamp{color:rgba(0,255,65,0.6);font-size:11px;margin-right:6px;}
 </style>
-<script src="https://js.pusher.com/beams/2.1.0/push-notifications-cdn.js"></script>
 </head>
 <body>
 
-<div id="topbar">
-  <div>STATUS: <span id="statusTxt">OFFLINE</span></div>
-  <div>Usuário: <span id="userTxt"></span></div>
-</div>
+<div id="topbar">STATUS: <span id="statusTxt">OFFLINE</span> | Usuário: <span id="userTxt"></span></div>
 
 <div id="controls">
   <button id="hostBtn">➕ Criar Sala</button>
-  <input id="roomId" placeholder="Cole o código da sala...">
+  <input id="roomId" placeholder="Código da sala...">
   <button id="joinBtn">🚀 Entrar</button>
 </div>
 
@@ -300,185 +39,119 @@ button:disabled {
 </div>
 
 <script>
-const log = document.getElementById("log");
-const input = document.getElementById("input");
-const hostBtn = document.getElementById("hostBtn");
-const joinBtn = document.getElementById("joinBtn");
-const roomIdInput = document.getElementById("roomId");
-const statusTxt = document.getElementById("statusTxt");
-const userTxt = document.getElementById("userTxt");
+const log=document.getElementById("log"),input=document.getElementById("input");
+const hostBtn=document.getElementById("hostBtn"),joinBtn=document.getElementById("joinBtn");
+const roomIdInput=document.getElementById("roomId"),statusTxt=document.getElementById("statusTxt");
+const userTxt=document.getElementById("userTxt");
+let username="User_"+Math.floor(Math.random()*999); userTxt.textContent=username;
 
-let roomId = null, isHost = false, pendingJoin = false;
-const username = "User_" + Math.floor(Math.random() * 999);
-userTxt.textContent = username;
+let isHost=false,pendingJoin=false,roomId=null;
+let pc=null,dataChannel=null;
 
-const channel = new BroadcastChannel("TERMINAL_CHAT_V3");
-
-function logMsg(user, text, msgClass = "msg-system") {
-  const t = new Date().toLocaleTimeString();
-  const d = document.createElement("div");
-  d.className = "msg-line " + msgClass;
-  d.innerHTML = `<span class="timestamp">[${t}]</span> <b>[${user}]</b> ${text}`;
-  log.appendChild(d);
-  log.scrollTop = log.scrollHeight;
+// ---- logging ----
+function logMsg(user,text,color="var(--user)"){
+  const d=document.createElement("div"); d.className="msg-line"; 
+  d.innerHTML=`<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <b>[${user}]</b> ${text}`; 
+  d.style.color=color; log.appendChild(d); log.scrollTop=log.scrollHeight;
 }
 
-function emit(data) {
-  channel.postMessage({...data, _ts: Date.now() + Math.random()});
-}
+// ---- Signaling via WebSocket ----
+// OBS: tu precisa de um WebSocket server rodando para signaling (ex: Node.js ws)
+const ws=new WebSocket("wss://SEU_WEBSOCKET_SERVER_AQUI"); // <<< trocar URL
+ws.onopen=()=>logMsg("Sistema","Conectado ao servidor de signaling.","var(--success)");
+ws.onmessage=async e=>{
+  const msg=JSON.parse(e.data);
+  if(msg.room!==roomId) return;
 
-async function sendViaBeams(type, data) {
-  try {
-    await fetch('https://25c53a34-9520-4359-b3a4-06872d75b7a6.pushnotifications.pusher.com/publish_api/v1/instances/25c53a34-9520-4359-b3a4-06872d75b7a6/publishes', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer 493349CE7C1A991DE604F74FCE3A1130A3FC3BDF4FA3D67DC270CE60FE8BFC0D'
-      },
-      body: JSON.stringify({
-        interests: [roomId],
-        web: {
-          notification: {
-            title: type,
-            body: JSON.stringify(data)
-          }
-        }
-      })
-    });
-  } catch (err) {
-    console.log('Erro ao enviar via Beams', err);
-  }
-}
-
-function configurarSala(code) {
-  const p = code.split("-");
-  roomId = p[0];
-  statusTxt.textContent = "SALA " + roomId;
-  statusTxt.style.color = "var(--success)";
-}
-
-function isValidRoomCode(code) {
-  return /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code);
-}
-
-hostBtn.onclick = () => {
-  isHost = true;
-  const r = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const k = Math.random().toString(36).substring(2, 6).toUpperCase();
-  roomIdInput.value = `${r}-${k}`;
-  configurarSala(roomIdInput.value);
-  input.disabled = false;
-  input.placeholder = "Digite uma mensagem...";
-  logMsg("Sistema", "Sala Criada com sucesso! Aguardando outros usuários...", "msg-success");
-  
-  beamsClient.addDeviceInterest(roomId).catch(err => console.log(err));
-};
-
-joinBtn.onclick = () => {
-  const roomCode = roomIdInput.value.trim();
-  if (!roomCode) {
-    logMsg("Erro", "Por favor, insira um código de sala.", "msg-error");
-    return;
+  if(msg.type==="JOIN_REQUEST" && isHost){
+    logMsg("Sistema",`${msg.user} quer entrar!`, "var(--system)");
+    logMsg("Sistema",`Digite: /accept ${msg.user} ou /reject ${msg.user}`,"var(--system)");
   }
 
-  if (!isValidRoomCode(roomCode)) {
-    logMsg("Erro", "Código inválido! Use o formato XXXX-XXXX", "msg-error");
-    return;
+  if(msg.action==="ACCEPT_"+username){
+    pendingJoin=false; input.disabled=false;
+    logMsg("Sistema","✓ Você foi aprovado!","var(--success)");
+    startPeerConnection(true); // inicia a conexão P2P
   }
 
-  configurarSala(roomCode);
-  pendingJoin = true;
-  input.disabled = true;
-  log.innerHTML = '<div class="lock-notice">🔒 Aguardando aprovação do administrador...</div>';
-
-  beamsClient.addDeviceInterest(roomId).catch(err => console.log(err));
-  
-  emit({ room: roomId, type: "JOIN_REQUEST", user: username });
-  sendViaBeams('JOIN_REQUEST', { room: roomId, user: username });
-};
-
-input.onkeydown = (e) => {
-  if (e.key !== "Enter" || !input.value.trim()) return;
-  const v = input.value.trim();
-
-  if (isHost && v.startsWith("/accept ")) {
-    const u = v.split(" ")[1];
-    emit({room: roomId, action: "ACCEPT_" + u});
-    sendViaBeams('ACCEPT', { room: roomId, user: u });
-    logMsg("Sistema", `✓ Usuário ${u} foi aprovado!`, "msg-success");
-    input.value = "";
-    return;
+  if(msg.action==="REJECT_"+username){
+    pendingJoin=false; input.disabled=true;
+    logMsg("Sistema","✗ Solicitação rejeitada.","var(--danger)");
   }
 
-  if (isHost && v.startsWith("/reject ")) {
-    const u = v.split(" ")[1];
-    emit({room: roomId, action: "REJECT_" + u});
-    sendViaBeams('REJECT', { room: roomId, user: u });
-    logMsg("Sistema", `✗ Usuário ${u} foi rejeitado.`, "msg-error");
-    input.value = "";
-    return;
-  }
-
-  logMsg(username, v, "msg-user");
-  emit({ room: roomId, type: "MESSAGE", user: username, text: v });
-  sendViaBeams('MESSAGE', { room: roomId, user: username, text: v });
-  input.value = "";
-};
-
-channel.onmessage = (e) => {
-  const data = e.data;
-
-  if (!data.room || data.room !== roomId) return;
-
-  if (data.type === "JOIN_REQUEST" && isHost) {
-    logMsg("Sistema", `${data.user} quer entrar na sala!`, "msg-system");
-    logMsg("Sistema", `Digite: /accept ${data.user} ou /reject ${data.user}`, "msg-system");
-  }
-
-  if (data.action === "ACCEPT_" + username) {
-    pendingJoin = false;
-    input.disabled = false;
-    log.innerHTML = "";
-    logMsg("Sistema", "✓ Você foi aprovado! Bem-vindo à sala.", "msg-success");
-  }
-
-  if (data.action === "REJECT_" + username) {
-    pendingJoin = false;
-    input.disabled = true;
-    log.innerHTML = "";
-    logMsg("Sistema", "✗ Sua solicitação foi rejeitada.", "msg-error");
-  }
-
-  if (data.type === "MESSAGE" && data.user !== username) {
-    logMsg(data.user, data.text, "msg-other");
-  }
-};
-
-// Inicializar Pusher Beams
-const beamsClient = new PusherPushNotifications.Client({
-  instanceId: '25c53a34-9520-4359-b3a4-06872d75b7a6',
-});
-
-beamsClient.start()
-  .then(() => console.log('Push Notifications iniciado'))
-  .catch(console.error);
-
-// Listener para notificações
-  //fino senhores 🍷🗿
-beamsClient.on('notification_received', (notification) => {
-  const notifData = notification.data;
-  if (notifData && notifData.title === 'JOIN_REQUEST') {
-    try {
-      const data = JSON.parse(notifData.body);
-      if (data.room === roomId && isHost) {
-        logMsg("Sistema", `${data.user} quer entrar na sala!`, "msg-system");
-        logMsg("Sistema", `Digite: /accept ${data.user} ou /reject ${data.user}`, "msg-system");
-      }
-    } catch (e) {
-      console.log('Erro ao processar notificação', e);
+  if(msg.sdp){
+    await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+    if(msg.sdp.type==="offer"){
+      const answer=await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      ws.send(JSON.stringify({room:roomId,sdp:answer}));
     }
   }
-});
+
+  if(msg.candidate){
+    try{ await pc.addIceCandidate(msg.candidate); }catch(e){console.log(e);}
+  }
+};
+
+// ---- WebRTC ----
+function startPeerConnection(isInitiator=false){
+  pc=new RTCPeerConnection();
+  
+  pc.onicecandidate=e=>{ if(e.candidate) ws.send(JSON.stringify({room:roomId,candidate:e.candidate})); }
+  
+  pc.ondatachannel=e=>{
+    dataChannel=e.channel;
+    setupDataChannel();
+  };
+
+  if(isInitiator){
+    dataChannel=pc.createDataChannel("chat");
+    setupDataChannel();
+    pc.createOffer().then(offer=>pc.setLocalDescription(offer).then(()=>ws.send(JSON.stringify({room:roomId,sdp:offer}))));
+  }
+}
+
+function setupDataChannel(){
+  dataChannel.onopen=()=>logMsg("Sistema","✅ Canal P2P aberto!","var(--success)");
+  dataChannel.onmessage=e=>logMsg("Outro",e.data,"var(--other)");
+}
+
+// ---- Host / Join ----
+hostBtn.onclick=()=>{
+  isHost=true;
+  const r=Math.random().toString(36).substring(2,6).toUpperCase();
+  const k=Math.random().toString(36).substring(2,6).toUpperCase();
+  roomIdInput.value=`${r}-${k}`; roomId=`${r}`; statusTxt.textContent="SALA "+roomId; statusTxt.style.color="var(--success)";
+  input.disabled=false; logMsg("Sistema","Sala criada. Aguardando usuários...","var(--success)");
+};
+
+joinBtn.onclick=()=>{
+  if(!roomIdInput.value.trim()){ logMsg("Erro","Insira código da sala!","var(--danger)"); return; }
+  roomId=roomIdInput.value.split("-")[0]; statusTxt.textContent="SALA "+roomId; statusTxt.style.color="var(--success)";
+  pendingJoin=true; input.disabled=true;
+  logMsg("Sistema","🔒 Aguardando aprovação do host...","var(--lock)");
+  ws.send(JSON.stringify({room:roomId,type:"JOIN_REQUEST",user:username}));
+};
+
+// ---- input ----
+input.onkeydown=e=>{
+  if(e.key!=="Enter"||!input.value.trim()) return;
+  const v=input.value.trim();
+
+  if(isHost && v.startsWith("/accept ")){
+    const u=v.split(" ")[1];
+    ws.send(JSON.stringify({room:roomId,action:"ACCEPT_"+u}));
+    logMsg("Sistema",`✓ ${u} aprovado!`,"var(--success)"); input.value=""; return;
+  }
+  if(isHost && v.startsWith("/reject ")){
+    const u=v.split(" ")[1];
+    ws.send(JSON.stringify({room:roomId,action:"REJECT_"+u}));
+    logMsg("Sistema",`✗ ${u} rejeitado.`,"var(--danger)"); input.value=""; return;
+  }
+
+  if(dataChannel && dataChannel.readyState==="open"){ dataChannel.send(v); logMsg(username,v,"var(--user)"); }
+  input.value="";
+};
 </script>
 </body>
 </html>
