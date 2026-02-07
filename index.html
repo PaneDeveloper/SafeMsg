@@ -198,7 +198,7 @@ signalingServer.onmessage = (message) => {
 
   switch (data.type) {
     case 'JOIN_REQUEST':
-      if (isHost) {
+      if (isHost && data.roomId === roomId) { // Ensure the roomId matches
         logMsg("Sistema", `${data.user} quer entrar na sala.`, "var(--system-color)");
         logMsg("Sistema", `/accept ${data.user} para aceitar | /cancel ${data.user} para cancelar`, "var(--system-color)");
       }
@@ -283,7 +283,7 @@ joinBtn.onclick = () => {
     logMsg("Erro", "Por favor, insira um código de sala.", "red");
     return;
   }
-
+// É MUITO BUG SOCORRO KKKKKKK
   if (!isValidRoomCode(roomCode)) {
     logMsg("Erro", "Código de sala inválido. Use o formato XXXX-XXXX.", "red");
     return;
@@ -296,37 +296,14 @@ joinBtn.onclick = () => {
 
   signalingServer.send(
     JSON.stringify({
-      type: 'JOIN_ROOM',
+      type: 'JOIN_REQUEST',
       roomId: roomId,
       user: username,
     })
   );
 
   createPeerConnection();
-
-  peerConnection
-    .createOffer()
-    .then((offer) => peerConnection.setLocalDescription(offer))
-    .then(() => {
-      signalingServer.send(
-        JSON.stringify({
-          type: 'SIGNAL',
-          signal: peerConnection.localDescription,
-          roomId: roomId,
-          user: username,
-        })
-      );
-    });
 };
-
-const beamsClient = new PusherPushNotifications.Client({
-    instanceId: '25c53a34-9520-4359-b3a4-06872d75b7a6',
-  });
-
-  beamsClient.start()
-    .then(() => beamsClient.addDeviceInterest('hello'))
-    .then(() => console.log('Successfully registered and subscribed!'))
-    .catch(console.error);
 </script>
 </body>
 </html>
