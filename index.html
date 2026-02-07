@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TERMINAL CHAT v3.3.4 (Fix Compatibility)</title>
+<style>
+  :root {
+    --bg-color: #0a0a0a;
+    --text-color: #00ff41;
+    --accent-color: #008f11;
+    --system-color: #ffff00;
+    --user-color: #00ffff;
+    --other-color: #ff8c00;
+    --crypto-color: #ff00ff;
+    --lock-color: #ff4444;
+    --hybrid-color: #00bfff;
+  }
+
+  body { 
+    background: var(--bg-color); 
+    color: var(--text-color); 
+    font-family: 'Courier New', Courier, monospace; 
+    margin: 0; 
+    display: flex; 
+    flex-direction: column; 
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #topbar { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    background: #1a1a1a;
+    padding: 10px 15px; 
+    border-bottom: 1px solid var(--accent-color);
+  }
+
+  .status-info { font-size: 12px; }
+  .btn-group { display: flex; gap: 10px; }
+
+  button { 
+    background: transparent;
+    border: 1px solid var(--text-color);
+    color: var(--text-color);
+    padding: 5px 10px; 
+    font-family: monospace; 
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  button:hover { background: var(--text-color); color: black; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  #controls { 
+    padding: 15px; 
+    display: flex; 
+    flex-wrap: wrap;
+    gap: 10px; 
+    background: #111;
+    border-bottom: 1px solid #333;
+  }
+
+  #controls input { 
+    background: #000;
+    border: 1px solid #444;
+    color: var(--text-color);
+    padding: 8px; 
+    outline: none;
+    font-family: monospace;
+  }
+
+  #log { 
+    flex: 1; 
+    overflow-y: auto; 
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  #playerContainer {
+    display: none;
+    background: #1a1a1a;
+    border-top: 2px solid var(--accent-color);
+    padding: 10px;
+    max-height: 450px;
+    overflow-y: auto;
+  }
+
+  #mainMedia {
+    width: 100%;
+    max-height: 240px;
+    background: #000;
+    margin-bottom: 10px;
+    border: 1px solid #333;
+  }
+
+  .playlist-area {
+    max-height: 120px;
+    overflow-y: auto;
+    border-top: 1px solid #333;
+    padding-top: 5px;
+  }
+
+  .playlist-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px;
+    border-bottom: 1px solid #222;
+    font-size: 13px;
+  }
+
+  .msg-line { 
+    margin-bottom: 8px; 
+    display: flex; 
+    align-items: flex-start;
+    position: relative;
+    padding: 4px;
+    border-radius: 4px;
+  }
+
+  .msg-line:hover { background: rgba(255,255,255,0.05); }
+  .timestamp { color: #666; font-size: 10px; margin-right: 8px; white-space: nowrap; padding-top: 4px; }
+  .msg-content { flex: 1; }
+
+  .input-area {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: #111;
+    border-top: 1px solid #333;
+    gap: 10px;
+  }
+
+  #input { 
+    flex: 1;
+    border: none; 
+    background: transparent; 
+    color: var(--text-color); 
+    font-family: monospace; 
+    font-size: 16px; 
+    outline: none;
+  }
+
+  .crypto-tag {
+    font-size: 9px;
+    padding: 0 4px;
+    margin-right: 5px;
+    border-radius: 3px;
+    border: 1px solid;
+  }
+
+  .tag-mega { color: var(--crypto-color); border-color: var(--crypto-color); text-shadow: 0 0 5px var(--crypto-color); }
+  .tag-hybrid { color: var(--hybrid-color); border-color: var(--hybrid-color); }
+  .tag-legacy { color: #888; border-color: #444; }
+
+  .lock-notice {
+    color: var(--lock-color);
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    border: 1px dashed var(--lock-color);
+    margin-bottom: 10px;
+  }
+
+  #log::-webkit-scrollbar { width: 5px; }
+  #log::-webkit-scrollbar-thumb { background: var(--accent-color); }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="status-info">
+    STATUS: <span id="statusTxt">OFFLINE</span> | USER: <span id="userTxt">User</span>
+  </div>
+  <div class="btn-group">
+    <button id="speechBtn">Voz: LIGADA</button>
+    <button id="clearBtn">Limpar</button>
+  </div>
+</div>
+
+<div id="controls">
+  <button id="hostBtn">CRIAR HOST</button>
+  <input id="roomId" placeholder="SALA-CHAVE" style="width: 250px;">
+  <button id="joinBtn">CONECTAR</button>
+</div>
+
+<div id="log"></div>
+
+<div id="playerContainer">
+  <div class="player-header" style="display:flex; justify-content:space-between; margin-bottom:10px;">
+    <span>🎬 Shared Media Player</span>
+    <button onclick="document.getElementById('fileInput').click()">+ Adicionar Mídia</button>
+    <input type="file" id="fileInput" hidden accept="audio/*,video/*">
+  </div>
+  <video id="mainMedia" controls></video>
+  <div id="playlistArea" class="playlist-area"></div>
+</div>
+
+<div class="input-area">
+  <span class="prompt">></span>
+  <input id="input" placeholder="Aguardando conexão..." disabled>
+</div>
+
+<script>
+/**
+ * CHAT TERMINAL v3.3.4 - FIX DE COMPATIBILIDADE REAL (ULTRA)
+ */
+
+const log = document.getElementById('log');
+const input = document.getElementById('input');
+const hostBtn = document.getElementById('hostBtn');
+const joinBtn = document.getElementById('joinBtn');
+const roomIdInput = document.getElementById('roomId');
+const speechBtn = document.getElementById('speechBtn');
+const clearBtn = document.getElementById('clearBtn');
+const userTxt = document.getElementById('userTxt');
+const statusTxt = document.getElementById('statusTxt');
+
+let roomId = null;
+let cryptoKey = ""; 
+let username = "User_" + Math.floor(Math.random() * 999);
+let isHost = false;
+let messagesLocked = true;
+
+const INTERNAL_PREFIX = "V3_SEC:";
+
+userTxt.textContent = username;
+
+// --- CRIPTOGRAFIA ---
+
+function encryptMega(text, key) {
+  let step1 = btoa(unescape(encodeURIComponent(INTERNAL_PREFIX + text)));
+  let step2 = "";
+  for (let i = 0; i < step1.length; i++) {
+    let charCode = step1.charCodeAt(i);
+    let keyChar = key.charCodeAt(i % key.length);
+    step2 += String.fromCharCode((charCode + keyChar) % 65536);
+  }
+  let step3 = "";
+  let salt = key.length;
+  for (let i = 0; i < step2.length; i++) {
+    step3 += String.fromCharCode(step2.charCodeAt(i) ^ salt);
+  }
+  let step4 = step3.split("").reverse().join("");
+  return btoa(unescape(encodeURIComponent(step4)));
+}
+
+function encryptLegacy(text) {
+  return btoa(unescape(encodeURIComponent(text)));
+}
+
+function decryptAny(cipherText, key) {
+  // 1. Tentar 5 camadas
+  try {
+    let step4 = decodeURIComponent(escape(atob(cipherText)));
+    let step3 = step4.split("").reverse().join("");
+    let step2 = "";
+    let salt = key.length;
+    for (let i = 0; i < step3.length; i++) {
+      step2 += String.fromCharCode(step3.charCodeAt(i) ^ salt);
+    }
+    let step1 = "";
+    for (let i = 0; i < step2.length; i++) {
+      let charCode = step2.charCodeAt(i);
+      let keyChar = key.charCodeAt(i % key.length);
+      step1 += String.fromCharCode((charCode - keyChar + 65536) % 65536);
+    }
+    let decoded = decodeURIComponent(escape(atob(step1)));
+    if (decoded.startsWith(INTERNAL_PREFIX)) {
+      return { text: decoded.replace(INTERNAL_PREFIX, ""), type: 'mega' };
+    }
+  } catch (e) {}
+
+  // 2. Tentar Base64 simples (Modo Público ou Versão Antiga)
+  try {
+    let decoded = decodeURIComponent(escape(atob(cipherText)));
+    return { text: decoded, type: messagesLocked ? 'legacy' : 'hybrid' };
+  } catch (e) {
+    return { text: cipherText, type: 'unknown' };
+  }
+}
+
+// --- Chat Logic ---
+
+function adicionarAoLog(usuario, texto, cor = "var(--text-color)", type = 'mega') {
+  // Se estiver trancado, só o Host ou o Sistema aparecem.
+  // Mas se for uma mensagem híbrida ou legacy enquanto estamos desbloqueados, permitimos.
+  if (messagesLocked && usuario !== "Sistema" && !isHost && type === 'mega') return;
+
+  const agora = new Date();
+  const timeStr = agora.getHours().toString().padStart(2, '0') + ":" + agora.getMinutes().toString().padStart(2, '0');
+  
+  const line = document.createElement('div');
+  line.className = "msg-line";
+  line.style.color = cor;
+  
+  let tagHtml = '';
+  if (type === 'mega') tagHtml = '<span class="crypto-tag tag-mega">MEGA-CRYPT</span>';
+  else if (type === 'hybrid') tagHtml = '<span class="crypto-tag tag-hybrid">PUBLIC-MODE</span>';
+  else if (type === 'legacy') tagHtml = '<span class="crypto-tag tag-legacy">LEGACY-USER</span>';
+
+  line.innerHTML = `
+    <span class="timestamp">[${timeStr}]</span> 
+    <div class="msg-content">
+      ${tagHtml}<strong>[${usuario}]</strong> <span>${texto}</span>
+    </div>
+  `;
+  
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function enviarMensagem(texto) {
+  let msgFinal = messagesLocked ? encryptMega(texto, cryptoKey) : encryptLegacy(texto);
+  
+  const payload = { room: roomId, msg: msgFinal, user: username };
+  localStorage.setItem("cli_chat_msg", JSON.stringify(payload));
+  localStorage.removeItem("cli_chat_msg"); 
+}
+
+function enviarSinalAdmin(action) {
+  const payload = { room: roomId, type: 'ADMIN_SIGNAL', action: action, from: username };
+  localStorage.setItem("cli_chat_admin", JSON.stringify(payload));
+  localStorage.removeItem("cli_chat_admin");
+}
+
+window.addEventListener("storage", (e) => {
+  if (!roomId) return;
+
+  if (e.key === "cli_chat_msg" && e.newValue) {
+    const data = JSON.parse(e.newValue);
+    // Verificamos a sala (versões antigas usam o roomId como o código todo)
+    if (data.room.includes(roomId) && data.user !== username) {
+      const result = decryptAny(data.msg, cryptoKey);
+      adicionarAoLog(data.user, result.text, "var(--other-color)", result.type);
+    }
+  }
+
+  if (e.key === "cli_chat_admin" && e.newValue) {
+    const signal = JSON.parse(e.newValue);
+    if (!signal.room.includes(roomId)) return;
+    
+    if (signal.action === 'UNLOCK') {
+      messagesLocked = false;
+      const notice = document.createElement('div');
+      notice.className = "lock-notice";
+      notice.style.color = "var(--hybrid-color)";
+      notice.style.borderColor = "var(--hybrid-color)";
+      notice.textContent = "CHAT DESBLOQUEADO (MODO COMPATIBILIDADE)";
+      log.appendChild(notice);
+    } else if (signal.action === 'LOCK') {
+      messagesLocked = true;
+      const notice = document.createElement('div');
+      notice.className = "lock-notice";
+      notice.textContent = "CHAT BLOQUEADO (MODO MEGA CRIPTO)";
+      log.appendChild(notice);
+    }
+    log.scrollTop = log.scrollHeight;
+  }
+});
+
+input.onkeydown = (e) => {
+  if (e.key === "Enter" && input.value.trim()) {
+    const val = input.value.trim();
+    if (isHost && val.toUpperCase() === "/SHOWMSG ALL") {
+      messagesLocked = false;
+      enviarSinalAdmin('UNLOCK');
+      adicionarAoLog("Sistema", "Chat liberado. Modo compatível ATIVO.", "var(--system-color)", 'hybrid');
+    } else if (isHost && val.toUpperCase() === "/HIDEMSG ALL") {
+      messagesLocked = true;
+      enviarSinalAdmin('LOCK');
+      adicionarAoLog("Sistema", "Chat restrito. Modo Mega-Cripto ATIVO.", "var(--lock-color)", 'mega');
+    } else {
+      adicionarAoLog(username, val, "var(--user-color)", messagesLocked ? 'mega' : 'hybrid');
+      enviarMensagem(val);
+    }
+    input.value = "";
+  }
+};
+
+function configurarSala(fullCode) {
+  const parts = fullCode.split("-");
+  roomId = parts[0];
+  cryptoKey = parts[1] || parts[0]; 
+  statusTxt.textContent = `SALA: ${roomId}`;
+  statusTxt.style.color = "lime";
+  input.disabled = false;
+  input.placeholder = "Comando ou Mensagem...";
+  
+  if (!isHost) {
+    messagesLocked = true;
+    log.innerHTML = `<div class="lock-notice">SALA PROTEGIDA: Aguardando Admin...</div>`;
+  }
+}
+
+hostBtn.onclick = () => {
+  isHost = true;
+  const r = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const p = Math.random().toString(36).substring(2, 8).toUpperCase();
+  roomIdInput.value = `${r}-${p}`;
+  configurarSala(roomIdInput.value);
+};
+
+joinBtn.onclick = () => {
+  if (roomIdInput.value.trim()) configurarSala(roomIdInput.value.trim());
+};
+
+clearBtn.onclick = () => { log.innerHTML = ""; };
+</script>
+</body>
+</html>
