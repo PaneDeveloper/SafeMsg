@@ -185,73 +185,24 @@ channel.onmessage = (e) => {
   }
 };
 
-const signalingServer = new WebSocket('wss://your-signaling-server-url'); // Substitua pela URL do servidor de sinalização
-let peerConnection;
-const config = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-  ],
-};
-
-signalingServer.onmessage = (message) => {
-  const data = JSON.parse(message.data);
-
-  switch (data.type) {
-    case 'JOIN_REQUEST':
-      if (isHost && data.roomId === roomId) { // Ensure the roomId matches
-        logMsg("Sistema", `${data.user} quer entrar na sala.`, "var(--system-color)");
-        logMsg("Sistema", `/accept ${data.user} para aceitar | /cancel ${data.user} para cancelar`, "var(--system-color)");
+// Enviar mensagens para o Pusher Beams
+async function sendNotificationToRoom(title, body) {
+  const response = await fetch('https://25c53a34-9520-4359-b3a4-06872d75b7a6.pushnotifications.pusher.com/publish_api/v1/instances/25c53a34-9520-4359-b3a4-06872d75b7a6/publishes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer 493349CE7C1A991DE604F74FCE3A1130A3FC3BDF4FA3D67DC270CE60FE8BFC0D'
+    },
+    body: JSON.stringify({
+      interests: [roomId],
+      web: {
+        notification: {
+          title: title,
+          body: body
+        }
       }
-      break;
-
-    case 'SIGNAL':
-      if (peerConnection) {
-        peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal))
-          .then(() => {
-            if (data.signal.type === 'offer') {
-              peerConnection.createAnswer()
-                .then((answer) => peerConnection.setLocalDescription(answer))
-                .then(() => {
-                  signalingServer.send(
-                    JSON.stringify({
-                      type: 'SIGNAL',
-                      signal: peerConnection.localDescription,
-                      roomId: roomId,
-                      user: username,
-                    })
-                  );
-                });
-            }
-          })
-          .catch(console.error);
-      }
-      break;
-  }
-};
-
-function createPeerConnection() {
-  peerConnection = new RTCPeerConnection(config);
-
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      signalingServer.send(
-        JSON.stringify({
-          type: 'SIGNAL',
-          signal: event.candidate,
-          roomId: roomId,
-          user: username,
-        })
-      );
-    }
-  };
-
-  peerConnection.ondatachannel = (event) => {
-    const channel = event.channel;
-    channel.onmessage = (e) => {
-      const { user, text } = JSON.parse(e.data);
-      logMsg(user, text, "var(--other-color)");
-    };
-  };
+    })
+  }).catch(err => console.log('Notificação sem servidor', err));
 }
 
 hostBtn.onclick = () => {
@@ -264,21 +215,9 @@ hostBtn.onclick = () => {
   input.disabled = false;
   input.placeholder = "Digite uma Mensagem ou Comando...";
   logMsg("Sistema", "Sala Criada.", "var(--system-color)");
-
-  signalingServer.send(
-    JSON.stringify({
-      type: 'CREATE_ROOM',
-      roomId: roomId,
-    })
-  );
-
-  createPeerConnection();
-
-  const dataChannel = peerConnection.createDataChannel('chat');
-  dataChannel.onmessage = (e) => {
-    const { user, text } = JSON.parse(e.data);
-    logMsg(user, text, "var(--other-color)");
-  };
+  
+  // Se estiver usando Pusher Beams, adicione interesse para esta sala
+  beamsClient.addDeviceInterest(roomId).catch(err => console.log(err));
 };
 
 joinBtn.onclick = () => {
@@ -298,16 +237,13 @@ joinBtn.onclick = () => {
   input.disabled = true;
   log.innerHTML = '<div class="lock-notice">Aguardando aprovação do criador da sala</div>';
 
-  signalingServer.send(
-    JSON.stringify({
-      type: 'JOIN_REQUEST',
-      roomId: roomId,
-      user: username,
-    })
-  );
-
-  createPeerConnection();
+  // Se estiver usando Pusher Beams, adicione interesse para esta sala
+  beamsClient.addDeviceInterest(roomId).catch(err => console.log(err));
+// corrigidos amigos!  
+  // Enviar solicitação via BroadcastChannel
+  emit({ room: roomId, type: "JOIN_REQUEST", user: username });
 };
 </script>
 </body>
 </html>
+
