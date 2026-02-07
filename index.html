@@ -206,22 +206,24 @@ signalingServer.onmessage = (message) => {
 
     case 'SIGNAL':
       if (peerConnection) {
-        peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
-        if (data.signal.type === 'offer') {
-          peerConnection
-            .createAnswer()
-            .then((answer) => peerConnection.setLocalDescription(answer))
-            .then(() => {
-              signalingServer.send(
-                JSON.stringify({
-                  type: 'SIGNAL',
-                  signal: peerConnection.localDescription,
-                  roomId: roomId,
-                  user: username,
-                })
-              );
-            });
-        }
+        peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal))
+          .then(() => {
+            if (data.signal.type === 'offer') {
+              peerConnection.createAnswer()
+                .then((answer) => peerConnection.setLocalDescription(answer))
+                .then(() => {
+                  signalingServer.send(
+                    JSON.stringify({
+                      type: 'SIGNAL',
+                      signal: peerConnection.localDescription,
+                      roomId: roomId,
+                      user: username,
+                    })
+                  );
+                });
+            }
+          })
+          .catch(console.error);
       }
       break;
   }
@@ -270,6 +272,8 @@ hostBtn.onclick = () => {
     })
   );
 
+  createPeerConnection();
+
   const dataChannel = peerConnection.createDataChannel('chat');
   dataChannel.onmessage = (e) => {
     const { user, text } = JSON.parse(e.data);
@@ -283,7 +287,7 @@ joinBtn.onclick = () => {
     logMsg("Erro", "Por favor, insira um código de sala.", "red");
     return;
   }
-// É MUITO BUG SOCORRO KKKKKKK
+
   if (!isValidRoomCode(roomCode)) {
     logMsg("Erro", "Código de sala inválido. Use o formato XXXX-XXXX.", "red");
     return;
