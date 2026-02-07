@@ -34,6 +34,12 @@ body{
 input{flex:1;background:transparent;border:none;color:var(--text-color);outline:none;}
 button{background:transparent;border:1px solid var(--text-color);color:var(--text-color);cursor:pointer;}
 button:hover{background:var(--text-color);color:#000}
+.error-msg {
+    color: red;
+    font-weight: bold;
+    text-align: center;
+    margin: 10px 0;
+  }
 </style>
 </head>
 <body>
@@ -102,15 +108,29 @@ hostBtn.onclick=()=>{
   logMsg("Sistema","Sala Criada.","var(--system-color)");
 };
 
-joinBtn.onclick=()=>{
-  if(!roomIdInput.value.trim()) return;
-  configurarSala(roomIdInput.value.trim());
-  pendingJoin=true;
-  input.disabled=true;
-  log.innerHTML='<div class="lock-notice">Aguardando aprovação do criador da sala</div>';
+function isValidRoomCode(code) {
+    return /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code);
+  }
 
-  emit({room:roomId,type:"JOIN_REQUEST",user:username});
-};
+joinBtn.onclick = () => {
+    const roomCode = roomIdInput.value.trim();
+    if (!roomCode) {
+      logMsg("Erro", "Por favor, insira um código de sala.", "red");
+      return;
+    }
+
+    if (!isValidRoomCode(roomCode)) {
+      logMsg("Erro", "Código de sala inválido. Use o formato XXXX-XXXX.", "red");
+      return;
+    }
+
+    configurarSala(roomCode);
+    pendingJoin = true;
+    input.disabled = true;
+    log.innerHTML = '<div class="lock-notice">Aguardando aprovação do criador da sala</div>';
+
+    emit({ room: roomId, type: "JOIN_REQUEST", user: username });
+  };
 
 input.onkeydown=e=>{
   if(e.key!=="Enter"||!input.value.trim())return;
@@ -140,8 +160,8 @@ channel.onmessage=(e)=>{
 
   // pedido join
   if(data.type==="JOIN_REQUEST" && isHost){
-    logMsg("Sistema",`${data.user} pediu para entrar.`,"var(--system-color)");
-    logMsg("Sistema",`/ACCEPT ${data.user} | /REJECT ${data.user}`,"var(--system-color)");
+    logMsg("Sistema",`${data.user} quer entrar na sala.`,"var(--system-color)");
+    logMsg("Sistema",`/accept ${data.user} para aceitar | /cancel ${data.user} para cancelar`,"var(--system-color)");
   }
 
   // aceito
@@ -157,6 +177,7 @@ channel.onmessage=(e)=>{
   if(data.action==="REJECT_"+username){
     pendingJoin=false;
     input.disabled=true;
+    log.innerHTML=""; // Limpa o log ao ser rejeitado
     logMsg("Sistema","Entrada recusada por um Admin.","var(--lock-color)");
   }
 };
