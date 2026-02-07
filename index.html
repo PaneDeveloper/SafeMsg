@@ -90,6 +90,30 @@ function emit(data){
   channel.postMessage({...data,_ts:Date.now()+Math.random()});
 }
 
+// Enviar via Pusher Beams
+async function sendViaBeams(type, data) {
+  try {
+    await fetch('https://25c53a34-9520-4359-b3a4-06872d75b7a6.pushnotifications.pusher.com/publish_api/v1/instances/25c53a34-9520-4359-b3a4-06872d75b7a6/publishes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer 493349CE7C1A991DE604F74FCE3A1130A3FC3BDF4FA3D67DC270CE60FE8BFC0D'
+      },
+      body: JSON.stringify({
+        interests: [roomId],
+        web: {
+          notification: {
+            title: type,
+            body: JSON.stringify(data)
+          }
+        }
+      })
+    });
+  } catch (err) {
+    console.log('Erro ao enviar via Beams', err);
+  }
+}
+
 function configurarSala(code){
   const p=code.split("-");
   roomId=p[0];
@@ -130,7 +154,12 @@ joinBtn.onclick = () => {
     input.disabled = true;
     log.innerHTML = '<div class="lock-notice">Aguardando aprovação do criador da sala</div>';
 
+    // Inscrever-se na sala para receber notificações
+    beamsClient.addDeviceInterest(roomId).catch(err => console.log(err));
+    
+    // Enviar solicitação via BroadcastChannel e Pusher Beams
     emit({ room: roomId, type: "JOIN_REQUEST", user: username });
+    sendViaBeams('JOIN_REQUEST', { room: roomId, user: username });
   };
 
 input.onkeydown=e=>{
@@ -239,11 +268,25 @@ joinBtn.onclick = () => {
 
   // Se estiver usando Pusher Beams, adicione interesse para esta sala
   beamsClient.addDeviceInterest(roomId).catch(err => console.log(err));
-// corrigidos amigos!  
-  // Enviar solicitação via BroadcastChannel
-  emit({ room: roomId, type: "JOIN_REQUEST", user: username });
 };
+
+// Listener para notificações do Pusher Beams
+  //Presta ._.
+  //se souber programar ele BEM, presta akakkakakakkaka
+beamsClient.on('notification_received', (notification) => {
+  const notifData = notification.data;
+  if (notifData && notifData.title === 'JOIN_REQUEST') {
+    try {
+      const data = JSON.parse(notifData.body);
+      if (data.room === roomId && isHost) {
+        logMsg("Sistema", `${data.user} quer entrar na sala.`, "var(--system-color)");
+        logMsg("Sistema", `/accept ${data.user} para aceitar | /cancel ${data.user} para cancelar`, "var(--system-color)");
+      }
+    } catch (e) {
+      console.log('Erro ao processar notificação', e);
+    }
+  }
+});
 </script>
 </body>
 </html>
-
