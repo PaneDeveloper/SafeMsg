@@ -154,33 +154,36 @@ input.onkeydown=e=>{
   input.value="";
 };
 
-channel.onmessage=(e)=>{
-  const data=e.data;
-  if(!data.room||!data.room.includes(roomId)) return;
+channel.onmessage = (e) => {
+  const data = e.data;
+
+  // Verifica se a mensagem é para a sala correta
+  if (!data.room || data.room !== roomId) return;
 
   // pedido join
-  if(data.type==="JOIN_REQUEST" && isHost){
-    logMsg("Sistema",`${data.user} quer entrar na sala.`,"var(--system-color)");
-    logMsg("Sistema",`/accept ${data.user} para aceitar | /cancel ${data.user} para cancelar`,"var(--system-color)");
+  if (data.type === "JOIN_REQUEST" && isHost) {
+    logMsg("Sistema", `${data.user} quer entrar na sala.`, "var(--system-color)");
+    logMsg("Sistema", `/accept ${data.user} para aceitar | /cancel ${data.user} para cancelar`, "var(--system-color)");
   }
 
   // aceito
-  if(data.action==="ACCEPT_"+username){
-    pendingJoin=false;
-    messagesLocked=false;
-    input.disabled=false;
-    log.innerHTML="";
-    logMsg("Sistema","Entrada autorizada por um Admin","var(--hybrid-color)");
+  if (data.action === "ACCEPT_" + username) {
+    pendingJoin = false;
+    messagesLocked = false;
+    input.disabled = false;
+    log.innerHTML = "";
+    logMsg("Sistema", "Entrada autorizada por um Admin", "var(--hybrid-color)");
   }
 
   // recusado
-  if(data.action==="REJECT_"+username){
-    pendingJoin=false;
-    input.disabled=true;
-    log.innerHTML=""; // Limpa o log ao ser rejeitado
-    logMsg("Sistema","Entrada recusada por um Admin.","var(--lock-color)");
+  if (data.action === "REJECT_" + username) {
+    pendingJoin = false;
+    input.disabled = true;
+    log.innerHTML = ""; // Limpa o log ao ser rejeitado
+    logMsg("Sistema", "Entrada recusada por um Admin.", "var(--lock-color)");
   }
 };
 </script>
 </body>
 </html>
+._.
