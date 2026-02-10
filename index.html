@@ -11,19 +11,24 @@ body { background:#0a0e27; color:#00ff41; font-family:monospace; display:flex; f
 #inputArea { display:flex; padding:10px; gap:5px; }
 input { flex:1; padding:8px; background:#111; border:1px solid #00ff41; color:#0f0; }
 button { padding:8px; background:#111; border:1px solid #00ff41; color:#0f0; cursor:pointer; }
+button[disabled] { opacity:0.5; cursor:not-allowed; }
 .msg { margin-bottom:5px; }
 .msg b { color:#0ff; }
+.controlBar { padding:10px; background:#111; display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+#roomId { max-width:190px; }
 </style>
 </head>
 <body>
 
 <div id="log"></div>
 <div id="inputArea">
-  <input id="input" placeholder="Digite algo..." disabled>
+  <input id="input" placeholder="Digite algo..." maxlength="500" disabled>
   <button id="sendBtn" disabled>Enviar</button>
+  <button id="leaveBtn" disabled>Sair da sala</button>
 </div>
-<div style="padding:10px; background:#111;">
-  Sua Sala (ID): <input id="roomId" placeholder="ID da sala">
+<div class="controlBar">
+  <span>Sala (ID):</span>
+  <input id="roomId" placeholder="ID da sala" maxlength="20">
   <button id="hostBtn">Criar Sala</button>
   <button id="joinBtn">Entrar</button>
 </div>
@@ -32,64 +37,239 @@ button { padding:8px; background:#111; border:1px solid #00ff41; color:#0f0; cur
 const log = document.getElementById('log');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
+const leaveBtn = document.getElementById('leaveBtn');
 const hostBtn = document.getElementById('hostBtn');
 const joinBtn = document.getElementById('joinBtn');
 const roomInput = document.getElementById('roomId');
 
-let peer, conn;
-const username = 'User_'+Math.floor(Math.random()*999);
+let peer = null;
+let isHost = false;
+let joinedRoomId = '';
+const roomConnections = new Map();
+const username = `User_${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`;
+
+function setRoomActiveState(active) {
+  input.disabled = !active;
+  sendBtn.disabled = !active;
+  leaveBtn.disabled = !active;
+  hostBtn.disabled = active;
+  joinBtn.disabled = active;
+  roomInput.disabled = active;
+}
+
+function cleanRoomId(rawRoomId) {
+  return rawRoomId.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 20);
+}
+
+function normalizeMessage(rawMessage) {
+  const message = (rawMessage || '').trim();
+  return message.slice(0, 500);
+}
 
 function logMsg(user, text) {
   const div = document.createElement('div');
   div.className = 'msg';
-  div.innerHTML = `<b>[${user}]</b> ${text}`;
+  const author = document.createElement('b');
+  author.textContent = `[${user}] `;
+  const messageText = document.createTextNode(text);
+  div.appendChild(author);
+  div.appendChild(messageText);
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
 
-// Criar peer como host
+function broadcastToPeers(payload, exceptConn = null) {
+  roomConnections.forEach((connection) => {
+    if (connection !== exceptConn && connection.open) {
+      connection.send(payload);
+    }
+  });
+}
+
+function closeCurrentSession(reason = 'Saiu da sala.') {
+  if (reason) {
+    logMsg('Sistema', reason);
+  }
+
+  roomConnections.forEach((connection) => {
+    if (connection.open) {
+      connection.close();
+    }
+  });
+  roomConnections.clear();
+
+  if (peer) {
+    peer.destroy();
+    peer = null;
+  }
+
+  isHost = false;
+  joinedRoomId = '';
+  setRoomActiveState(false);
+}
+
+function attachConnection(connection) {
+  roomConnections.set(connection.peer, connection);
+
+  connection.on('data', (data) => {
+    if (!data || typeof data !== 'object') {
+      return;
+    }
+
+    const safeUser = typeof data.user === 'string' ? data.user.slice(0, 40) : 'Desconhecido';
+
+    if (data.type === 'SYSTEM') {
+      const safeText = normalizeMessage(data.text);
+      if (safeText) {
+        logMsg('Sistema', safeText);
+        if (isHost) {
+          broadcastToPeers({ type: 'SYSTEM', text: safeText }, connection);
+        }
+      }
+      return;
+    }
+
+    const safeText = normalizeMessage(data.text);
+    if (!safeText) {
+      return;
+    }
+
+    logMsg(safeUser, safeText);
+
+    if (isHost) {
+      broadcastToPeers({ type: 'CHAT', user: safeUser, text: safeText }, connection);
+    }
+  });
+
+  connection.on('close', () => {
+    roomConnections.delete(connection.peer);
+
+    if (isHost) {
+      const leaveNotice = `${connection.peer} saiu da sala.`;
+      logMsg('Sistema', leaveNotice);
+      broadcastToPeers({ type: 'SYSTEM', text: leaveNotice });
+      return;
+    }
+
+    closeCurrentSession('Conexão encerrada pelo host.');
+  });
+
+  connection.on('error', () => {
+    logMsg('Sistema', `Erro de conexão com ${connection.peer}.`);
+  });
+}
+
 hostBtn.onclick = () => {
-  const roomId = (roomInput.value || Math.random().toString(36).substring(2,6)).toUpperCase();
+  if (peer) {
+    return;
+  }
+
+  const fallbackId = Math.random().toString(36).slice(2, 8);
+  const roomId = cleanRoomId(roomInput.value || fallbackId);
+  if (!roomId) {
+    alert('Informe um ID válido (A-Z, 0-9, _ ou -).');
+    return;
+  }
+
   roomInput.value = roomId;
-  peer = new Peer(roomId, { host:'peerjs.com', port:443, secure:true });
-  
-  peer.on('open', id => {
-    logMsg('Sistema', 'Sala criada! ID: '+id);
-    input.disabled = false; sendBtn.disabled = false;
+  peer = new Peer(roomId, { host: 'peerjs.com', port: 443, secure: true });
+
+  peer.on('open', (id) => {
+    isHost = true;
+    joinedRoomId = id;
+    setRoomActiveState(true);
+    logMsg('Sistema', `Sala criada! ID: ${id}`);
   });
 
-  peer.on('connection', c => {
-    conn = c;
-    conn.on('data', data => logMsg(data.user, data.text));
-    logMsg('Sistema','Um usuário entrou!');
-  });
-};
+  peer.on('connection', (connection) => {
+    attachConnection(connection);
 
-// Entrar em sala
-joinBtn.onclick = () => {
-  const roomId = roomInput.value.trim();
-  if (!roomId) { alert('Coloque o ID da sala!'); return; }
-  peer = new Peer(undefined, { host:'peerjs.com', port:443, secure:true });
-  
-  peer.on('open', id => {
-    conn = peer.connect(roomId);
-    conn.on('open', () => {
-      input.disabled = false; sendBtn.disabled = false;
-      logMsg('Sistema','Conectado à sala '+roomId);
+    connection.on('open', () => {
+      const joinNotice = `${connection.peer} entrou na sala.`;
+      logMsg('Sistema', joinNotice);
+      broadcastToPeers({ type: 'SYSTEM', text: joinNotice }, connection);
+      connection.send({ type: 'SYSTEM', text: `Conectado na sala ${joinedRoomId}.` });
     });
-    conn.on('data', data => logMsg(data.user, data.text));
+  });
+
+  peer.on('error', (error) => {
+    logMsg('Sistema', `Falha ao criar sala: ${error.type || 'erro desconhecido'}.`);
+    closeCurrentSession('Sessão encerrada por erro.');
   });
 };
 
-// Enviar mensagem
-  //Fino Senhores 🍷🗿
+joinBtn.onclick = () => {
+  if (peer) {
+    return;
+  }
+
+  const roomId = cleanRoomId(roomInput.value);
+  if (!roomId) {
+    alert('Coloque um ID válido da sala!');
+    return;
+  }
+
+  roomInput.value = roomId;
+  peer = new Peer(undefined, { host: 'peerjs.com', port: 443, secure: true });
+
+  peer.on('open', () => {
+    const connection = peer.connect(roomId, { reliable: true });
+    attachConnection(connection);
+
+    connection.on('open', () => {
+      joinedRoomId = roomId;
+      setRoomActiveState(true);
+      logMsg('Sistema', `Conectado à sala ${roomId}.`);
+      connection.send({ type: 'SYSTEM', text: `${username} entrou na sala.` });
+    });
+  });
+
+  peer.on('error', (error) => {
+    logMsg('Sistema', `Falha ao entrar na sala: ${error.type || 'erro desconhecido'}.`);
+    closeCurrentSession('Não foi possível manter a conexão.');
+  });
+};
+
 sendBtn.onclick = () => {
-  const msg = input.value.trim();
-  if (!msg) return;
+  const msg = normalizeMessage(input.value);
+  if (!msg || !peer) {
+    return;
+  }
+
   logMsg(username, msg);
-  if(conn && conn.open) conn.send({user:username, text:msg});
+
+  if (isHost) {
+    broadcastToPeers({ type: 'CHAT', user: username, text: msg });
+  } else {
+    const connection = Array.from(roomConnections.values())[0];
+    if (connection && connection.open) {
+      connection.send({ type: 'CHAT', user: username, text: msg });
+    }
+  }
+
   input.value = '';
 };
+
+leaveBtn.onclick = () => {
+  if (!peer) {
+    return;
+  }
+
+  if (!isHost) {
+    const connection = Array.from(roomConnections.values())[0];
+    if (connection && connection.open) {
+      connection.send({ type: 'SYSTEM', text: `${username} saiu da sala.` });
+    }
+  }
+
+  closeCurrentSession('Você saiu da sala.');
+};
+
+input.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !sendBtn.disabled) {
+    sendBtn.click();
+  }
+});
 </script>
 </body>
 </html>
