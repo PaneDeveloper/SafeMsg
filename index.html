@@ -155,6 +155,11 @@ button.warn { border-color: #896125; background: #4a3312; color: #ffe7b8; }
   color: var(--muted);
   line-height: 1.4;
 }
+.spacer-8 { height: 8px; }
+.spacer-10 { height: 10px; }
+.mt-6 { margin-top: 6px; }
+.mt-8 { margin-top: 8px; }
+.warn-text { color: var(--warn); }
 @media (max-width: 940px) {
   .app { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
@@ -179,10 +184,10 @@ button.warn { border-color: #896125; background: #4a3312; color: #ffe7b8; }
       <h3>Sala segura</h3>
       <label for="roomId">ID da sala</label>
       <input id="roomId" maxlength="20" placeholder="Ex: TEAM42">
-      <div style="height:8px"></div>
+      <div class="spacer-8"></div>
       <label for="roomKey">Chave extra (opcional)</label>
       <input id="roomKey" maxlength="64" placeholder="segredo compartilhado">
-      <div style="height:10px"></div>
+      <div class="spacer-10"></div>
       <div class="row">
         <button id="hostBtn" class="primary">Criar sala</button>
         <button id="joinBtn">Entrar</button>
@@ -192,8 +197,8 @@ button.warn { border-color: #896125; background: #4a3312; color: #ffe7b8; }
     <section class="card">
       <h3>Estado</h3>
       <div class="hint" id="status">Status: desconectado</div>
-      <div class="hint" id="participants" style="margin-top:6px;">Participantes: 1</div>
-      <div class="hint" id="securityHint" style="margin-top:8px; color: var(--warn);">
+      <div class="hint mt-6" id="participants">Participantes: 1</div>
+      <div class="hint mt-8 warn-text" id="securityHint">
         Mensagens: AES-GCM 128 / Arquivos: AES-GCM 256
       </div>
     </section>
@@ -241,6 +246,7 @@ let peer = null;
 let isHost = false;
 let hostConn = null;
 let clients = new Map();
+let objectUrls = new Set();
 let lastSentAt = 0;
 let activeRoomId = '';
 
@@ -292,6 +298,11 @@ function setActiveRoom(roomId) {
 function updateParticipants() {
   const count = isHost ? clients.size + 1 : hostConn && hostConn.open ? 2 : 1;
   participantsLabel.textContent = `Participantes: ${count}`;
+}
+
+function clearObjectUrls() {
+  objectUrls.forEach((url) => URL.revokeObjectURL(url));
+  objectUrls.clear();
 }
 
 function setConnectedState(connected) {
@@ -424,6 +435,15 @@ async function renderFileOffer(packet, sourceConn) {
 
   let blobUrl = null;
 
+  function setBlobUrl(url) {
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+      objectUrls.delete(blobUrl);
+    }
+    blobUrl = url;
+    objectUrls.add(url);
+  }
+
   async function getBlob() {
     const plain = await decryptBytes(packet.fileCipher, packet.iv, packet.salt, 'file');
     return new Blob([plain], { type: packet.mime || 'application/octet-stream' });
@@ -432,8 +452,7 @@ async function renderFileOffer(packet, sourceConn) {
   openBtn.onclick = async () => {
     try {
       const blob = await getBlob();
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-      blobUrl = URL.createObjectURL(blob);
+      setBlobUrl(URL.createObjectURL(blob));
       const anchor = document.createElement('a');
       anchor.href = blobUrl;
       anchor.download = packet.fileName || 'arquivo.bin';
@@ -447,16 +466,15 @@ async function renderFileOffer(packet, sourceConn) {
   previewBtn.onclick = async () => {
     if (preview.style.display === 'block') {
       preview.style.display = 'none';
-      preview.innerHTML = '';
+      preview.replaceChildren();
       return;
     }
 
     try {
       const blob = await getBlob();
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-      blobUrl = URL.createObjectURL(blob);
+      setBlobUrl(URL.createObjectURL(blob));
       preview.style.display = 'block';
-      preview.innerHTML = '';
+      preview.replaceChildren();
 
       const type = packet.mime || '';
       if (type.startsWith('image/')) {
@@ -520,6 +538,8 @@ async function handlePacket(packet, sourceConn) {
 }
 
 function attachConnectionEvents(connection, remoteName = 'Convidado') {
+  const readableName = sanitizeName((connection.metadata && connection.metadata.username) || remoteName || connection.peer);
+
   connection.on('data', (data) => {
     handlePacket(data, connection).catch(() => safeLogMessage('Sistema', 'Erro ao processar pacote.', true));
   });
@@ -527,7 +547,7 @@ function attachConnectionEvents(connection, remoteName = 'Convidado') {
   connection.on('close', () => {
     if (isHost) {
       clients.delete(connection.peer);
-      safeLogMessage('Sistema', `${remoteName} saiu da sala.`, true);
+      safeLogMessage('Sistema', `${readableName} saiu da sala.`, true);
       updateParticipants();
     } else {
       safeLogMessage('Sistema', 'Conexão com a sala encerrada.', true);
@@ -544,6 +564,7 @@ function cleanupConnection() {
   clients.clear();
   if (peer) { peer.destroy(); peer = null; }
   isHost = false;
+  clearObjectUrls();
   setConnectedState(false);
   setStatus('desconectado');
   setActiveRoom('');
@@ -569,8 +590,9 @@ hostBtn.onclick = () => {
 
   peer.on('connection', (connection) => {
     clients.set(connection.peer, connection);
-    attachConnectionEvents(connection, connection.peer);
-    safeLogMessage('Sistema', `${connection.peer} entrou na sala.`, true);
+    const username = sanitizeName((connection.metadata && connection.metadata.username) || connection.peer);
+    attachConnectionEvents(connection, username);
+    safeLogMessage('Sistema', `${username} entrou na sala.`, true);
     connection.send({ type: 'system', id: `sys-${Date.now()}`, text: 'Você entrou na sala.' });
     updateParticipants();
   });
@@ -679,6 +701,8 @@ leaveBtn.onclick = () => {
 
 window.addEventListener('beforeunload', cleanupConnection);
 nameInput.value = sanitizeName(nameInput.value || '');
+setConnectedState(false);
+updateParticipants();
 </script>
 </body>
 </html>
