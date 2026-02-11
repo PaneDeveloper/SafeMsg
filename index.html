@@ -6,90 +6,679 @@
 <title>SafeMsg Online</title>
 <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
 <style>
-body { background:#0a0e27; color:#00ff41; font-family:monospace; display:flex; flex-direction:column; height:100vh; margin:0; }
-#log { flex:1; overflow-y:auto; padding:15px; border-bottom:1px solid #333; }
-#inputArea { display:flex; padding:10px; gap:5px; }
-input { flex:1; padding:8px; background:#111; border:1px solid #00ff41; color:#0f0; }
-button { padding:8px; background:#111; border:1px solid #00ff41; color:#0f0; cursor:pointer; }
-.msg { margin-bottom:5px; }
-.msg b { color:#0ff; }
+:root {
+  --bg: #070b1a;
+  --panel: #0f172f;
+  --panel-2: #131d39;
+  --line: #273459;
+  --text: #d7e5ff;
+  --muted: #9ab0da;
+  --accent: #49f5a6;
+  --accent-2: #57c7ff;
+  --warn: #ffc45c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+  background: radial-gradient(circle at 20% 0%, #17254b 0%, var(--bg) 48%);
+  color: var(--text);
+}
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+}
+.sidebar {
+  border-right: 1px solid var(--line);
+  background: rgba(9, 15, 32, 0.88);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.brand {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+.brand small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.card {
+  background: rgba(19, 29, 57, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+}
+.card h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; }
+label { font-size: 12px; color: var(--muted); display: block; margin: 0 0 6px; }
+input {
+  width: 100%;
+  background: #0c1430;
+  border: 1px solid #2b3a60;
+  color: var(--text);
+  border-radius: 9px;
+  padding: 9px 10px;
+  outline: none;
+}
+input:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(87, 199, 255, 0.13); }
+button {
+  border: 1px solid #39548f;
+  background: #1a2c57;
+  color: var(--text);
+  border-radius: 9px;
+  padding: 9px 11px;
+  cursor: pointer;
+  font-weight: 600;
+}
+button:hover { filter: brightness(1.09); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { border-color: #2c9f76; background: #134430; }
+button.warn { border-color: #896125; background: #4a3312; color: #ffe7b8; }
+.main {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-width: 0;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(10, 16, 34, .8);
+  padding: 14px 18px;
+}
+.badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  border: 1px solid #35508a;
+  background: #0f1a34;
+  color: #c7dbff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+#log {
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.msg {
+  max-width: min(820px, 96%);
+  background: rgba(17, 27, 54, 0.82);
+  border: 1px solid #2d406f;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.msg.system {
+  border-style: dashed;
+  border-color: #4f67a3;
+  color: #d0dcff;
+}
+.msg b { color: #89f8c8; }
+.file-actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+.preview {
+  margin-top: 8px;
+  border: 1px dashed #416db9;
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(10, 17, 35, 0.7);
+}
+.preview img, .preview video, .preview audio { max-width: 100%; }
+.composer {
+  border-top: 1px solid var(--line);
+  background: rgba(10, 16, 34, 0.86);
+  padding: 12px 18px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.composer input[type="text"] { flex: 1; }
+.hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+@media (max-width: 940px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+}
 </style>
 </head>
 <body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      SafeMsg
+      <small>Chat P2P criptografado + compartilhamento seguro</small>
+    </div>
 
-<div id="log"></div>
-<div id="inputArea">
-  <input id="input" placeholder="Digite algo..." disabled>
-  <button id="sendBtn" disabled>Enviar</button>
-</div>
-<div style="padding:10px; background:#111;">
-  Sua Sala (ID): <input id="roomId" placeholder="ID da sala">
-  <button id="hostBtn">Criar Sala</button>
-  <button id="joinBtn">Entrar</button>
+    <section class="card">
+      <h3>Identidade</h3>
+      <label for="nameInput">Nome</label>
+      <input id="nameInput" maxlength="24" placeholder="Seu nome">
+    </section>
+
+    <section class="card">
+      <h3>Sala segura</h3>
+      <label for="roomId">ID da sala</label>
+      <input id="roomId" maxlength="20" placeholder="Ex: TEAM42">
+      <div style="height:8px"></div>
+      <label for="roomKey">Chave extra (opcional)</label>
+      <input id="roomKey" maxlength="64" placeholder="segredo compartilhado">
+      <div style="height:10px"></div>
+      <div class="row">
+        <button id="hostBtn" class="primary">Criar sala</button>
+        <button id="joinBtn">Entrar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Estado</h3>
+      <div class="hint" id="status">Status: desconectado</div>
+      <div class="hint" id="participants" style="margin-top:6px;">Participantes: 1</div>
+      <div class="hint" id="securityHint" style="margin-top:8px; color: var(--warn);">
+        Mensagens: AES-GCM 128 / Arquivos: AES-GCM 256
+      </div>
+    </section>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div style="font-weight:600;">Sala ativa</div>
+      <div class="badges">
+        <span class="pill" id="activeRoomPill">Sem sala</span>
+        <span class="pill">Preview de mídia só com clique</span>
+      </div>
+    </header>
+
+    <section id="log" aria-live="polite"></section>
+
+    <footer class="composer">
+      <input id="input" type="text" maxlength="500" placeholder="Digite uma mensagem..." disabled>
+      <button id="sendBtn" disabled>Enviar</button>
+      <button id="fileBtn" disabled>Arquivo</button>
+      <button id="leaveBtn" class="warn" disabled>Sair</button>
+      <input id="fileInput" type="file" style="display:none">
+    </footer>
+  </main>
 </div>
 
 <script>
 const log = document.getElementById('log');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
+const fileBtn = document.getElementById('fileBtn');
+const leaveBtn = document.getElementById('leaveBtn');
+const fileInput = document.getElementById('fileInput');
 const hostBtn = document.getElementById('hostBtn');
 const joinBtn = document.getElementById('joinBtn');
 const roomInput = document.getElementById('roomId');
+const roomKeyInput = document.getElementById('roomKey');
+const nameInput = document.getElementById('nameInput');
+const statusLabel = document.getElementById('status');
+const participantsLabel = document.getElementById('participants');
+const activeRoomPill = document.getElementById('activeRoomPill');
 
-let peer, conn;
-const username = 'User_'+Math.floor(Math.random()*999);
+const localSeenMessages = new Set();
+let peer = null;
+let isHost = false;
+let hostConn = null;
+let clients = new Map();
+let lastSentAt = 0;
+let activeRoomId = '';
 
-function logMsg(user, text) {
-  const div = document.createElement('div');
-  div.className = 'msg';
-  div.innerHTML = `<b>[${user}]</b> ${text}`;
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
+const MAX_FILE_SIZE = 8 * 1024 * 1024;
+
+function sanitizeRoomId(raw) {
+  return raw.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 20);
 }
 
-// Criar peer como host
-hostBtn.onclick = () => {
-  const roomId = (roomInput.value || Math.random().toString(36).substring(2,6)).toUpperCase();
+function sanitizeName(raw) {
+  return raw.replace(/[^\p{L}\p{N}_\- .]/gu, '').trim().slice(0, 24) || `User_${Math.floor(Math.random() * 9999)}`;
+}
+
+function getSenderName() {
+  nameInput.value = sanitizeName(nameInput.value || '');
+  return nameInput.value;
+}
+
+function getPassphrase() {
+  const roomId = sanitizeRoomId(roomInput.value || activeRoomId || 'SAFE');
   roomInput.value = roomId;
-  peer = new Peer(roomId, { host:'peerjs.com', port:443, secure:true });
-  
-  peer.on('open', id => {
-    logMsg('Sistema', 'Sala criada! ID: '+id);
-    input.disabled = false; sendBtn.disabled = false;
+  const custom = roomKeyInput.value.trim();
+  return custom ? `${roomId}:${custom}` : `${roomId}:default-safe-key`;
+}
+
+function safeLogMessage(user, text, isSystem = false) {
+  const div = document.createElement('div');
+  div.className = `msg ${isSystem ? 'system' : ''}`;
+  const name = document.createElement('b');
+  name.textContent = `[${user}] `;
+  const content = document.createElement('span');
+  content.textContent = text;
+  div.appendChild(name);
+  div.appendChild(content);
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  return div;
+}
+
+function setStatus(message) {
+  statusLabel.textContent = `Status: ${message}`;
+}
+
+function setActiveRoom(roomId) {
+  activeRoomId = roomId || '';
+  activeRoomPill.textContent = activeRoomId ? `Sala: ${activeRoomId}` : 'Sem sala';
+}
+
+function updateParticipants() {
+  const count = isHost ? clients.size + 1 : hostConn && hostConn.open ? 2 : 1;
+  participantsLabel.textContent = `Participantes: ${count}`;
+}
+
+function setConnectedState(connected) {
+  input.disabled = !connected;
+  sendBtn.disabled = !connected;
+  fileBtn.disabled = !connected;
+  leaveBtn.disabled = !connected;
+  hostBtn.disabled = connected;
+  joinBtn.disabled = connected;
+  roomInput.disabled = connected;
+  roomKeyInput.disabled = connected;
+  nameInput.disabled = connected;
+}
+
+function canSendNow() {
+  const now = Date.now();
+  if (now - lastSentAt < 300) {
+    safeLogMessage('Sistema', 'Você está enviando rápido demais. Aguarde um instante.', true);
+    return false;
+  }
+  lastSentAt = now;
+  return true;
+}
+
+function toBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function fromBase64(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function deriveAesKey(passphrase, saltBytes, profile) {
+  const enc = new TextEncoder();
+  const baseKey = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  const params = profile === 'file'
+    ? { iterations: 320000, length: 256 }
+    : { iterations: 120000, length: 128 };
+
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: saltBytes,
+      iterations: params.iterations,
+      hash: 'SHA-256'
+    },
+    baseKey,
+    { name: 'AES-GCM', length: params.length },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptBytes(bytes, profile) {
+  if (!window.crypto || !window.crypto.subtle) {
+    throw new Error('Criptografia não suportada neste navegador.');
+  }
+
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const passphrase = getPassphrase();
+  const key = await deriveAesKey(passphrase, salt, profile);
+  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes);
+
+  return {
+    cipherB64: toBase64(new Uint8Array(cipher)),
+    ivB64: toBase64(iv),
+    saltB64: toBase64(salt)
+  };
+}
+
+async function decryptBytes(cipherB64, ivB64, saltB64, profile) {
+  const cipher = fromBase64(cipherB64);
+  const iv = fromBase64(ivB64);
+  const salt = fromBase64(saltB64);
+  const passphrase = getPassphrase();
+  const key = await deriveAesKey(passphrase, salt, profile);
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+  return new Uint8Array(plain);
+}
+
+async function encryptText(text, profile) {
+  const encoded = new TextEncoder().encode(text);
+  return encryptBytes(encoded, profile);
+}
+
+async function decryptText(cipherB64, ivB64, saltB64, profile) {
+  const bytes = await decryptBytes(cipherB64, ivB64, saltB64, profile);
+  return new TextDecoder().decode(bytes);
+}
+
+function createChatPacket(payload) {
+  return {
+    type: 'chat',
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    user: getSenderName(),
+    ...payload,
+    ts: Date.now()
+  };
+}
+
+function broadcast(packet, sourceConn) {
+  if (!isHost) return;
+  clients.forEach((clientConn) => {
+    if (clientConn !== sourceConn && clientConn.open) clientConn.send(packet);
+  });
+}
+
+async function renderFileOffer(packet, sourceConn) {
+  const msg = safeLogMessage(packet.user || 'Desconhecido', `Arquivo recebido: ${packet.fileName} (${Math.ceil(packet.size / 1024)} KB)`);
+  const actions = document.createElement('div');
+  actions.className = 'file-actions';
+
+  const openBtn = document.createElement('button');
+  openBtn.textContent = 'Abrir/baixar arquivo';
+  const previewBtn = document.createElement('button');
+  previewBtn.textContent = 'Preview (clique)';
+
+  const preview = document.createElement('div');
+  preview.className = 'preview';
+  preview.style.display = 'none';
+
+  let blobUrl = null;
+
+  async function getBlob() {
+    const plain = await decryptBytes(packet.fileCipher, packet.iv, packet.salt, 'file');
+    return new Blob([plain], { type: packet.mime || 'application/octet-stream' });
+  }
+
+  openBtn.onclick = async () => {
+    try {
+      const blob = await getBlob();
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = packet.fileName || 'arquivo.bin';
+      anchor.click();
+      safeLogMessage('Sistema', `Download iniciado: ${packet.fileName}`, true);
+    } catch {
+      safeLogMessage('Sistema', 'Falha ao descriptografar arquivo (chave inválida?).', true);
+    }
+  };
+
+  previewBtn.onclick = async () => {
+    if (preview.style.display === 'block') {
+      preview.style.display = 'none';
+      preview.innerHTML = '';
+      return;
+    }
+
+    try {
+      const blob = await getBlob();
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      blobUrl = URL.createObjectURL(blob);
+      preview.style.display = 'block';
+      preview.innerHTML = '';
+
+      const type = packet.mime || '';
+      if (type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = blobUrl;
+        img.alt = packet.fileName;
+        preview.appendChild(img);
+      } else if (type.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.src = blobUrl;
+        video.controls = true;
+        preview.appendChild(video);
+      } else if (type.startsWith('audio/')) {
+        const audio = document.createElement('audio');
+        audio.src = blobUrl;
+        audio.controls = true;
+        preview.appendChild(audio);
+      } else {
+        const info = document.createElement('span');
+        info.textContent = 'Preview não disponível para esse tipo, use Abrir/baixar.';
+        preview.appendChild(info);
+      }
+    } catch {
+      safeLogMessage('Sistema', 'Falha no preview (arquivo corrompido/chave inválida).', true);
+    }
+  };
+
+  actions.appendChild(openBtn);
+  actions.appendChild(previewBtn);
+  msg.appendChild(actions);
+  msg.appendChild(preview);
+
+  if (isHost) broadcast(packet, sourceConn);
+}
+
+async function handlePacket(packet, sourceConn) {
+  if (!packet || typeof packet !== 'object' || !packet.type || localSeenMessages.has(packet.id)) return;
+  localSeenMessages.add(packet.id);
+
+  if (packet.type === 'system') {
+    safeLogMessage('Sistema', packet.text || 'Evento de sistema', true);
+    return;
+  }
+
+  if (packet.type === 'chat') {
+    if (!packet.cipher || !packet.iv || !packet.salt || typeof packet.user !== 'string') return;
+    try {
+      const text = await decryptText(packet.cipher, packet.iv, packet.salt, 'message');
+      safeLogMessage(packet.user || 'Desconhecido', text);
+      if (isHost) broadcast(packet, sourceConn);
+    } catch {
+      safeLogMessage('Sistema', 'Não foi possível ler uma mensagem (chave incorreta).', true);
+    }
+    return;
+  }
+
+  if (packet.type === 'file') {
+    if (!packet.fileCipher || !packet.iv || !packet.salt || !packet.fileName || packet.size > MAX_FILE_SIZE) return;
+    await renderFileOffer(packet, sourceConn);
+  }
+}
+
+function attachConnectionEvents(connection, remoteName = 'Convidado') {
+  connection.on('data', (data) => {
+    handlePacket(data, connection).catch(() => safeLogMessage('Sistema', 'Erro ao processar pacote.', true));
   });
 
-  peer.on('connection', c => {
-    conn = c;
-    conn.on('data', data => logMsg(data.user, data.text));
-    logMsg('Sistema','Um usuário entrou!');
+  connection.on('close', () => {
+    if (isHost) {
+      clients.delete(connection.peer);
+      safeLogMessage('Sistema', `${remoteName} saiu da sala.`, true);
+      updateParticipants();
+    } else {
+      safeLogMessage('Sistema', 'Conexão com a sala encerrada.', true);
+      cleanupConnection();
+    }
+  });
+
+  connection.on('error', () => safeLogMessage('Sistema', 'Erro na conexão P2P.', true));
+}
+
+function cleanupConnection() {
+  if (hostConn) { hostConn.close(); hostConn = null; }
+  clients.forEach((c) => c.close());
+  clients.clear();
+  if (peer) { peer.destroy(); peer = null; }
+  isHost = false;
+  setConnectedState(false);
+  setStatus('desconectado');
+  setActiveRoom('');
+  updateParticipants();
+}
+
+hostBtn.onclick = () => {
+  const roomId = sanitizeRoomId(roomInput.value || Math.random().toString(36).substring(2, 7));
+  roomInput.value = roomId;
+  if (!roomId) return alert('ID da sala inválido.');
+
+  cleanupConnection();
+  isHost = true;
+  peer = new Peer(roomId, { host: 'peerjs.com', port: 443, secure: true });
+
+  peer.on('open', (id) => {
+    setConnectedState(true);
+    setStatus(`hospedando sala ${id}`);
+    setActiveRoom(id);
+    safeLogMessage('Sistema', `Sala criada! ID: ${id}`, true);
+    updateParticipants();
+  });
+
+  peer.on('connection', (connection) => {
+    clients.set(connection.peer, connection);
+    attachConnectionEvents(connection, connection.peer);
+    safeLogMessage('Sistema', `${connection.peer} entrou na sala.`, true);
+    connection.send({ type: 'system', id: `sys-${Date.now()}`, text: 'Você entrou na sala.' });
+    updateParticipants();
+  });
+
+  peer.on('error', (error) => {
+    safeLogMessage('Sistema', `Erro de sala: ${error.type || 'desconhecido'}.`, true);
+    cleanupConnection();
   });
 };
 
-// Entrar em sala
 joinBtn.onclick = () => {
-  const roomId = roomInput.value.trim();
-  if (!roomId) { alert('Coloque o ID da sala!'); return; }
-  peer = new Peer(undefined, { host:'peerjs.com', port:443, secure:true });
-  
-  peer.on('open', id => {
-    conn = peer.connect(roomId);
-    conn.on('open', () => {
-      input.disabled = false; sendBtn.disabled = false;
-      logMsg('Sistema','Conectado à sala '+roomId);
+  const roomId = sanitizeRoomId(roomInput.value.trim());
+  roomInput.value = roomId;
+  if (!roomId) return alert('Coloque um ID de sala válido.');
+
+  cleanupConnection();
+  isHost = false;
+  peer = new Peer(undefined, { host: 'peerjs.com', port: 443, secure: true });
+
+  peer.on('open', () => {
+    hostConn = peer.connect(roomId, { reliable: true, metadata: { username: getSenderName() } });
+    hostConn.on('open', () => {
+      setConnectedState(true);
+      setStatus(`conectado à sala ${roomId}`);
+      setActiveRoom(roomId);
+      safeLogMessage('Sistema', `Conectado à sala ${roomId}.`, true);
+      updateParticipants();
     });
-    conn.on('data', data => logMsg(data.user, data.text));
+    attachConnectionEvents(hostConn, 'Host');
+  });
+
+  peer.on('error', (error) => {
+    safeLogMessage('Sistema', `Erro ao entrar na sala: ${error.type || 'desconhecido'}.`, true);
+    cleanupConnection();
   });
 };
 
-// Enviar mensagem
-  //Fino Senhores 🍷🗿
-sendBtn.onclick = () => {
+sendBtn.onclick = async () => {
   const msg = input.value.trim();
-  if (!msg) return;
-  logMsg(username, msg);
-  if(conn && conn.open) conn.send({user:username, text:msg});
-  input.value = '';
+  if (!msg || !canSendNow()) return;
+
+  try {
+    const encrypted = await encryptText(msg, 'message');
+    const packet = createChatPacket({ cipher: encrypted.cipherB64, iv: encrypted.ivB64, salt: encrypted.saltB64 });
+    localSeenMessages.add(packet.id);
+    safeLogMessage(packet.user, msg);
+
+    if (isHost) broadcast(packet);
+    else if (hostConn && hostConn.open) hostConn.send(packet);
+
+    input.value = '';
+  } catch {
+    safeLogMessage('Sistema', 'Falha ao criptografar mensagem.', true);
+  }
 };
+
+input.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendBtn.click();
+  }
+});
+
+fileBtn.onclick = () => fileInput.click();
+
+fileInput.onchange = async () => {
+  const file = fileInput.files && fileInput.files[0];
+  fileInput.value = '';
+  if (!file || !canSendNow()) return;
+
+  if (file.size > MAX_FILE_SIZE) {
+    safeLogMessage('Sistema', 'Arquivo grande demais (máx. 8MB).', true);
+    return;
+  }
+
+  try {
+    const raw = new Uint8Array(await file.arrayBuffer());
+    const encrypted = await encryptBytes(raw, 'file');
+    const packet = {
+      type: 'file',
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      user: getSenderName(),
+      fileName: file.name.replace(/[\r\n]/g, '').slice(0, 120),
+      mime: file.type || 'application/octet-stream',
+      size: file.size,
+      fileCipher: encrypted.cipherB64,
+      iv: encrypted.ivB64,
+      salt: encrypted.saltB64,
+      ts: Date.now()
+    };
+
+    localSeenMessages.add(packet.id);
+    safeLogMessage(packet.user, `Arquivo enviado: ${packet.fileName} (${Math.ceil(file.size / 1024)} KB)`);
+
+    if (isHost) broadcast(packet);
+    else if (hostConn && hostConn.open) hostConn.send(packet);
+  } catch {
+    safeLogMessage('Sistema', 'Falha ao criptografar/enviar arquivo.', true);
+  }
+};
+
+leaveBtn.onclick = () => {
+  safeLogMessage('Sistema', 'Você saiu da sala.', true);
+  cleanupConnection();
+};
+
+window.addEventListener('beforeunload', cleanupConnection);
+nameInput.value = sanitizeName(nameInput.value || '');
 </script>
 </body>
 </html>
